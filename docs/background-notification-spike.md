@@ -1,13 +1,13 @@
 # バックグラウンド計測・音声・振動通知 技術Spike
 
-Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結果。2026-08-14 時点の公式資料を基に、Issue #3 でMVP要件と技術スタックを決めるための判断材料を整理する。
+Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結果。2026-08-14 時点の公式資料を基に、Issue #3 で初期リリース要件と技術スタックを決めるための判断材料を整理する。
 
 ## 結論
 
-- **時間通知はMVPで成立可能**。セッション開始時にOSのローカル通知を先行予約し、バックグラウンドや画面ロック中の表示・同梱音声・システム通知の振動をOSに委ねる。
+- **時間通知は初期リリースで成立可能**。セッション開始時にOSのローカル通知を先行予約し、バックグラウンドや画面ロック中の表示・同梱音声・システム通知の振動をOSに委ねる。
 - 「音声」はバックグラウンドで任意の読み上げ処理を起動するのではなく、**給水／ジェルを区別できる30秒未満の同梱済み短音声**を通知音に使う。フォアグラウンドでは同じ音源の再生とアプリ内ハプティクスを利用できる。
 - 通知許可、音、振動、集中モード／Do Not Disturb、サイレント、端末・メーカーの省電力設定はユーザーとOSが最終制御する。したがって、**指定時刻の音声・振動を無条件には保証しない**。
-- **距離通知は技術的には実現可能だがMVPから外すことを推奨**する。累積距離はジオフェンスでは判定できず、バックグラウンド位置更新、追加権限、AndroidのForeground Service、電池・精度評価、両ストアの審査対応が必要になる。強制終了後の継続も保証できない。
+- **距離通知は技術的には実現可能だが初期リリースから外すことを推奨**する。累積距離はジオフェンスでは判定できず、バックグラウンド位置更新、追加権限、AndroidのForeground Service、電池・精度評価、両ストアの審査対応が必要になる。強制終了後の継続も保証できない。
 - 技術スタックはこのSpikeでは確定しない。現時点では **React Native + Expo development buildを最初の検証候補**、Flutterを比較候補、ネイティブを制約回避が必要な場合の候補とする。Expo Goは必要なバックグラウンド機能を検証できないため候補外とする。
 - 公式資料でOS APIと候補フレームワークの成立条件を確認できたため、このIssueではプロトタイプを追加しない。実機固有の通知精度・省電力挙動は技術選定後の通知実装Issueと実走QAで確認する。
 
@@ -17,11 +17,11 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 - 「終了」: OSがプロセスを回収した状態を含む。ユーザーの強制終了／Androidの強制停止とは区別する。
 - 「時間通知」: セッション開始時刻からの絶対時刻で、開始時に予約できる給水・ジェル通知。
 - 「距離通知」: GPS等から得た位置列をアプリが積算し、設定距離の到達を判定する通知。特定地点への出入りを監視するジオフェンスとは異なる。
-- MVPは外部API、サーバープッシュ、クラウド処理を使わない。
+- 初期リリースは外部API、サーバープッシュ、クラウド処理を使わない。
 
 ## iOS / Android 機能可否マトリクス
 
-記号は `○` がOSの正規APIで成立、`△` が条件付きまたは非保証、`×` がMVP方式では不可を表す。
+記号は `○` がOSの正規APIで成立、`△` が条件付きまたは非保証、`×` が今回の方式では不可を表す。
 
 | 状態・機能 | iOS | Android | 成立条件・制約 |
 | --- | --- | --- | --- |
@@ -31,22 +31,22 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 | ユーザー強制終了／強制停止後の予約済み時間通知 | ○ | × | iOSはアプリの実行状態と独立して、OSに登録済みの時間通知を配信する。ただし、アプリ内セッション状態、通知の取消・再予約、距離更新は継続しない。Androidの強制停止後はユーザーが再起動するまで通知継続を保証しない。 |
 | 通知バナー／ロック画面表示 | △ | △ | 通知許可が必須。表示方法、プレビュー、チャンネル重要度はユーザー設定・OS制御。Android 13以降は`POST_NOTIFICATIONS`が必要。 |
 | 同梱した短音声の通知音 | △ | △ | iOSのカスタム通知音は30秒未満。Android 8以降はNotification Channelに音を設定する。サイレント、Focus/DND、音量、チャンネル設定で鳴らない場合がある。 |
-| バックグラウンドでの動的TTS | × | × | 予約時刻に任意コードを確実に起動できない。通知イベントを合図にTTSを開始する設計はMVPの保証対象にしない。 |
+| バックグラウンドでの動的TTS | × | × | 予約時刻に任意コードを確実に起動できない。通知イベントを合図にTTSを開始する設計は初期リリースの保証対象にしない。 |
 | 通知に伴う振動 | △ | △ | iOSは通知設定・端末状態に従う。Androidはチャンネルの振動パターンを設定できるが、作成後はユーザーが最終制御する。アプリ内ハプティクスAPIはバックグラウンド通知の代替ではない。 |
-| Focus / DND中の割り込み | △ | △ | iOSのCritical Alertは申請制entitlementでMVP対象外。Time Sensitiveもユーザーが無効化可能。AndroidのDND迂回は追加アクセスが必要なためMVPでは要求しない。 |
+| Focus / DND中の割り込み | △ | △ | iOSのCritical Alertは申請制entitlementで初期リリース対象外。Time Sensitiveもユーザーが無効化可能。AndroidのDND迂回は追加アクセスが必要なため初期リリースでは要求しない。 |
 | 背面／ロック中の連続距離更新 | △ | △ | iOSはLocation background modeと位置権限、Androidは位置権限とユーザー開始のlocation Foreground Serviceが必要。OS・省電力・精度の影響を受ける。 |
 | 強制終了後の距離通知 | × | × | Expoの連続background locationはユーザー終了で停止し、Androidは自動再起動しない。OS差を吸収して継続保証できない。 |
 | 距離到達時の音声・振動 | △ | △ | プロセスが位置更新を受けて到達判定できる場合のみ即時ローカル通知を出せる。位置更新が遅延・停止すれば通知も遅延・欠落する。 |
 
 ## 通知方式の比較
 
-| 方式 | 背面・ロック | 終了後 | 正確性 | MVP判断 |
+| 方式 | 背面・ロック | 終了後 | 正確性 | 初期リリース判断 |
 | --- | --- | --- | --- | --- |
 | JS/Dartのタイマーを動かし続ける | × | × | OSのサスペンドで停止 | 不採用 |
 | OSローカル通知を開始時に先行予約 | ○ | 条件付き○ | OS・権限・省電力の範囲内 | **時間通知の採用候補** |
 | Background Task / WorkManagerで時刻判定 | △ | △ | 実行時刻はOS判断。Expo BackgroundTaskも即時実行を保証しない | 通知時刻判定には不採用 |
-| Android Foreground Serviceで常時タイマー | Androidのみ○ | △ | 継続通知が必須。開始制限・権限・Playポリシー対応が増える | 時間だけのMVPでは優先しない |
-| バックグラウンド位置更新で累積距離判定 | △ | × | GPS精度・更新間隔・電池・OS終了に依存 | **MVP見送り推奨** |
+| Android Foreground Serviceで常時タイマー | Androidのみ○ | △ | 継続通知が必須。開始制限・権限・Playポリシー対応が増える | 時間だけの初期リリースでは優先しない |
+| バックグラウンド位置更新で累積距離判定 | △ | × | GPS精度・更新間隔・電池・OS終了に依存 | **初期リリース見送り推奨** |
 
 ### 時間通知の推奨フロー
 
@@ -65,7 +65,7 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 - 多くのアプリは背面移行後にサスペンドされる。任意のタイマーやTTSを動かし続ける設計ではなく、`UNUserNotificationCenter`へ先行予約する。
 - ローカル通知はアプリが前面にいない、または実行されていない場合もOSが処理する。前面中はdelegateで表示・音の扱いを明示する。
 - 通知許可はalert、sound等の状態が個別に変わり得るため、開始前に設定を確認する。
-- 通常通知はサイレントやFocusを必ず突破できない。Critical Alertは特別なentitlementが必要であり、補給タイマーMVPでは申請しない。
+- 通常通知はサイレントやFocusを必ず突破できない。Critical Alertは特別なentitlementが必要であり、補給タイマーの初期リリースでは申請しない。
 - カスタム通知音は端末内に事前配置し、30秒未満にする。動的TTSは予約通知の音源にできない。
 - 連続距離計測にはCore Locationのbackground modeと適切な権限説明が必要。バックグラウンド位置はリアルタイムのフィットネス用途として正当化可能だが、App Review Guidelines 2.5.4 / 5.1.5に沿って目的を明示する。
 - ユーザー終了や権限変更、OS判断による位置更新停止を前提とし、距離到達通知を確実とは表現しない。
@@ -85,7 +85,7 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 
 | 候補 | 時間ローカル通知 | 背景位置 | 音・振動 | 実装速度 | OS制約対応・保守 | 現時点の評価 |
 | --- | --- | --- | --- | --- | --- | --- |
-| React Native + Expo development build | `expo-notifications`で両OSを共通化。Android exact alarm設定も明記 | `expo-location` + `expo-task-manager`。権限、iOS background mode、Android FGS設定を提供 | 同梱音声、Android channel振動、前面`expo-haptics`を提供 | 高 | OS固有設定と実機検証は残る。必要ならprebuild/config pluginまたはnative moduleへ降りられる | **最初の検証候補**。時間通知MVPと相性がよい |
+| React Native + Expo development build | `expo-notifications`で両OSを共通化。Android exact alarm設定も明記 | `expo-location` + `expo-task-manager`。権限、iOS background mode、Android FGS設定を提供 | 同梱音声、Android channel振動、前面`expo-haptics`を提供 | 高 | OS固有設定と実機検証は残る。必要ならprebuild/config pluginまたはnative moduleへ降りられる | **最初の検証候補**。時間通知の初期リリースと相性がよい |
 | Flutter | Dart isolateの仕組みがあり、Flutter公式DocsからFlutter Community管理の`workmanager`への導線がある | 位置・ローカル通知は主にplugin選定とnative設定が必要 | plugin依存 | 中 | `workmanager`を含むcommunity pluginの管理主体・品質・更新追従をIssue #3で評価する必要 | 比較候補。採用済み資産がない現状ではExpoよりSpike量が増える |
 | iOS / Androidネイティブ | UserNotifications / AlarmManagerを直接利用 | Core Location / Fused Location・FGSを直接利用 | OS APIを最大限制御 | 低（2実装） | 制約追従は明確だが、UI・ロジック・QAが二重化 | OS差を細かく制御する必要が判明した場合の候補 |
 
@@ -95,7 +95,7 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 - **Web / PWAのみ**: iOS / Androidで画面ロック中の時間通知、同梱音声、振動、連続位置を同じ保証範囲で提供できない。
 - **通常のBackground Taskによる秒・分単位タイマー**: OSが実行時刻を決めるため、補給予定時刻の通知源として使えない。
 
-## MVPで保証する範囲
+## 初期リリースで保証する範囲
 
 ### 保証する（必要条件を満たす場合）
 
@@ -116,12 +116,12 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 - ユーザー強制終了／強制停止後のセッション継続・自動復旧。
 - OSやメーカーの省電力制御を回避すること。
 - バックグラウンドで任意のTTSを起動すること。
-- GPS距離と距離到達通知（MVP見送り推奨）。
+- GPS距離と距離到達通知（初期リリース見送り推奨）。
 - 医療・安全上の緊急通知。Critical Alert / DND迂回は使わない。
 
-## 距離通知のMVP採否
+## 距離通知の初期リリース採否
 
-**Issue #3への提案: MVPは時間通知のみとし、距離通知はMVP後または別の実機Spike後に判断する。**
+**Issue #3への提案: 初期リリースは時間通知のみとし、距離通知は初期リリース後または別の実機Spike後に判断する。**
 
 理由:
 
@@ -136,7 +136,7 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 
 ## Issue #3で決めること
 
-- MVPを時間通知のみとするか。距離通知を残すなら、追加実機Spikeと審査コストを受け入れるか。
+- 初期リリースを時間通知のみとするか。距離通知を残すなら、追加実機Spikeと審査コストを受け入れるか。
 - React Native + Expo development build、Flutter、ネイティブのどれを採用するか。
 - Androidでexact alarm特別アクセスを要求するか、一定の遅延を許容するか。許可拒否時のフォールバックをどう表示するか。
 - 1セッションの最大時間・通知件数と、iOS保留通知上限に収める入力上限。
