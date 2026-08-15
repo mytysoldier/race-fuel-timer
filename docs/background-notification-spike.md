@@ -28,7 +28,7 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 | 前面での経過時間表示 | ○ | ○ | `setInterval`の加算ではなく、開始時刻・停止時間から再計算する。 |
 | 背面／ロック中の時間通知 | ○ | △ | iOSは事前予約したローカル通知をアプリ非実行時もOSが配信する。Androidで正確な時刻を求める場合はAlarmManagerのexact alarmと特別アクセスが必要。不許可時やinexact alarmは遅延し得る。 |
 | OS回収後の予約済み時間通知 | ○ | △ | iOSは予約済み通知をOSが保持。AndroidはExpo Notificationsが再起動後の再設定用に`RECEIVE_BOOT_COMPLETED`を利用するが、強制停止やメーカー独自制限は保証外。 |
-| ユーザー強制終了／強制停止後の通知 | △ | × | 予約済み通知の端末差を含め保証対象外とし、再起動時にセッションを再同期する。Androidの強制停止後はユーザーが再起動するまで継続を保証しない。 |
+| ユーザー強制終了／強制停止後の予約済み時間通知 | ○ | × | iOSはアプリの実行状態と独立して、OSに登録済みの時間通知を配信する。ただし、アプリ内セッション状態、通知の取消・再予約、距離更新は継続しない。Androidの強制停止後はユーザーが再起動するまで通知継続を保証しない。 |
 | 通知バナー／ロック画面表示 | △ | △ | 通知許可が必須。表示方法、プレビュー、チャンネル重要度はユーザー設定・OS制御。Android 13以降は`POST_NOTIFICATIONS`が必要。 |
 | 同梱した短音声の通知音 | △ | △ | iOSのカスタム通知音は30秒未満。Android 8以降はNotification Channelに音を設定する。サイレント、Focus/DND、音量、チャンネル設定で鳴らない場合がある。 |
 | バックグラウンドでの動的TTS | × | × | 予約時刻に任意コードを確実に起動できない。通知イベントを合図にTTSを開始する設計はMVPの保証対象にしない。 |
@@ -86,7 +86,7 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 | 候補 | 時間ローカル通知 | 背景位置 | 音・振動 | 実装速度 | OS制約対応・保守 | 現時点の評価 |
 | --- | --- | --- | --- | --- | --- | --- |
 | React Native + Expo development build | `expo-notifications`で両OSを共通化。Android exact alarm設定も明記 | `expo-location` + `expo-task-manager`。権限、iOS background mode、Android FGS設定を提供 | 同梱音声、Android channel振動、前面`expo-haptics`を提供 | 高 | OS固有設定と実機検証は残る。必要ならprebuild/config pluginまたはnative moduleへ降りられる | **最初の検証候補**。時間通知MVPと相性がよい |
-| Flutter | Dart isolateと公式WorkManager pluginの導線あり | 位置・ローカル通知は主にplugin選定とnative設定が必要 | plugin依存 | 中 | plugin品質・更新追従をIssue #3で評価する必要 | 比較候補。採用済み資産がない現状ではExpoよりSpike量が増える |
+| Flutter | Dart isolateの仕組みがあり、Flutter公式DocsからFlutter Community管理の`workmanager`への導線がある | 位置・ローカル通知は主にplugin選定とnative設定が必要 | plugin依存 | 中 | `workmanager`を含むcommunity pluginの管理主体・品質・更新追従をIssue #3で評価する必要 | 比較候補。採用済み資産がない現状ではExpoよりSpike量が増える |
 | iOS / Androidネイティブ | UserNotifications / AlarmManagerを直接利用 | Core Location / Fused Location・FGSを直接利用 | OS APIを最大限制御 | 低（2実装） | 制約追従は明確だが、UI・ロジック・QAが二重化 | OS差を細かく制御する必要が判明した場合の候補 |
 
 ### 候補から外すもの
@@ -188,3 +188,4 @@ Issue [#2](https://github.com/mytysoldier/race-fuel-timer/issues/2) の調査結
 - [Expo BackgroundTask](https://docs.expo.dev/versions/latest/sdk/background-task/)
 - [Expo Haptics](https://docs.expo.dev/versions/latest/sdk/haptics/)
 - [Flutter: Background processes](https://docs.flutter.dev/packages-and-plugins/background-processes)
+- [pub.dev: workmanager（publisher: fluttercommunity.dev）](https://pub.dev/packages/workmanager)
