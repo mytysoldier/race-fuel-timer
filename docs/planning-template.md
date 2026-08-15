@@ -37,7 +37,6 @@ MVPはiOS向けネイティブアプリとして、走行前に設定した時�
 - Swift 5.9 / SwiftUI
 - UserNotifications（時間ベースのローカル通知）
 - `UserDefaults`（小さな設定データの端末内保存）
-- XCTest
 
 理由:
 
