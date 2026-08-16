@@ -123,13 +123,13 @@ SwiftUI、UserNotifications、UserDefaultsを使うiOSネイティブ構成と�
 - iPhoneの小さい画面、縦向き、Dynamic Type、VoiceOverで主要操作ができる
 - エラー、権限拒否、保存データ破損でアプリ全体がクラッシュしない
 - 前面、別アプリ前面、画面ロック中で、iOSへ予約した時間通知の挙動を実機確認する
-- `lint`、`typecheck`、`test`、`build` をCIで実行する。具体的なコマンドは#5でSwift向けに定義する
+- `lint`、`typecheck`、`test`、`build` をローカルで実行する。具体的なコマンドは#5でSwift向けに定義する
 
 ## 後続Issueの進め方
 
 | 順序 | Issue | 着手条件・変更対象 |
 | --- | --- | --- |
-| 1 | #5 | SwiftUIプロジェクト、CI、開発・検証コマンドを新規作成する。 |
+| 1 | #5 | SwiftUIプロジェクトとローカルの開発・検証コマンドを新規作成する。 |
 | 2 | #6 | #5完了後。UIとiOS APIに依存しない時間通知スケジュール計算を実装する。 |
 | 3 | #7 | #6完了後。設定画面と入力バリデーションを実装する。 |
 | 4 | #8 | #7完了後。実行中画面と状態遷移を実装する。 |
@@ -144,7 +144,7 @@ SwiftUI、UserNotifications、UserDefaultsを使うiOSネイティブ構成と�
 
 ### 検証コマンドの方針
 
-#5でリポジトリ直下に `make lint`、`make typecheck`、`make test`、`make build` を定義し、GitHub Actionsでも同じ品質ゲートを実行する。iOS実機・シミュレータでしか確認できない通知・画面ロック・VoiceOverは、#14の手動回帰チェックリストで管理する。
+#5でリポジトリ直下に `make lint`、`make typecheck`、`make test`、`make build` を定義し、すべてローカルで実行する。iOS実機・シミュレータでしか確認できない通知・画面ロック・VoiceOverは、#14の手動回帰チェックリストで管理する。
 
 ## 参考資料
 
