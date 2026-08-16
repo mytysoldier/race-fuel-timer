@@ -11,6 +11,7 @@
 		A10000000000000000000004 /* ReminderSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* ReminderSchedule.swift */; };
 		A10000000000000000000005 /* ReminderScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* ReminderScheduleTests.swift */; };
 		A10000000000000000000006 /* ReminderPlanPreset.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000018 /* ReminderPlanPreset.swift */; };
+		A10000000000000000000007 /* ReminderPlanValidationMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000019 /* ReminderPlanValidationMessage.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -21,6 +22,7 @@
 		A10000000000000000000016 /* ReminderSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderSchedule.swift; sourceTree = "<group>"; };
 		A10000000000000000000017 /* ReminderScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduleTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000018 /* ReminderPlanPreset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderPlanPreset.swift; sourceTree = "<group>"; };
+		A10000000000000000000019 /* ReminderPlanValidationMessage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderPlanValidationMessage.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -34,7 +36,7 @@
 		A10000000000000000000032 /* RaceFuelTimerTests */ = {isa = PBXGroup; children = (A10000000000000000000017 /* ReminderScheduleTests.swift */); path = RaceFuelTimerTests; sourceTree = "<group>"; };
 		A10000000000000000000033 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000014 /* RaceFuelTimer.app */, A10000000000000000000015 /* RaceFuelTimerTests.xctest */); name = Products; sourceTree = "<group>"; };
 		A10000000000000000000034 /* App */ = {isa = PBXGroup; children = (A10000000000000000000011 /* RaceFuelTimerApp.swift */); path = App; sourceTree = "<group>"; };
-		A10000000000000000000035 /* Features */ = {isa = PBXGroup; children = (A10000000000000000000012 /* ContentView.swift */); path = Features; sourceTree = "<group>"; };
+		A10000000000000000000035 /* Features */ = {isa = PBXGroup; children = (A10000000000000000000012 /* ContentView.swift */, A10000000000000000000019 /* ReminderPlanValidationMessage.swift */); path = Features; sourceTree = "<group>"; };
 		A10000000000000000000036 /* Domain */ = {isa = PBXGroup; children = (A10000000000000000000016 /* ReminderSchedule.swift */, A10000000000000000000018 /* ReminderPlanPreset.swift */); path = Domain; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
@@ -54,7 +56,7 @@
 
 /* Begin PBXSourcesBuildPhase section */
 		A10000000000000000000022 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* ReminderScheduleTests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000023 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */, A10000000000000000000002 /* ContentView.swift in Sources */, A10000000000000000000004 /* ReminderSchedule.swift in Sources */, A10000000000000000000006 /* ReminderPlanPreset.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000023 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */, A10000000000000000000002 /* ContentView.swift in Sources */, A10000000000000000000004 /* ReminderSchedule.swift in Sources */, A10000000000000000000006 /* ReminderPlanPreset.swift in Sources */, A10000000000000000000007 /* ReminderPlanValidationMessage.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
