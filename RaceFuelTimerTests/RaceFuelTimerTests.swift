@@ -1,8 +1,7 @@
-import XCTest
+import Testing
 @testable import RaceFuelTimer
 
-final class RaceFuelTimerTests: XCTestCase {
-    func testAppModuleLoads() {
-        XCTAssertNotNil(ContentView())
-    }
+@Test
+func appModuleLoads() {
+    _ = ContentView()
 }
