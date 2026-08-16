@@ -149,6 +149,16 @@ struct ContentView: View {
             .onChange(of: selectedDistance) { _, distance in
                 applyPreset(for: distance.kilometers)
             }
+            .onChange(of: customDistance) { _, distance in
+                guard selectedDistance == .custom,
+                      let kilometers = Double(distance),
+                      (0.1...200).contains(kilometers)
+                else {
+                    return
+                }
+
+                applyPreset(for: kilometers)
+            }
         }
     }
 

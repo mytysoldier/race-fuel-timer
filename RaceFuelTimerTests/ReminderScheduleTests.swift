@@ -122,3 +122,16 @@ func 十五km以上のプリセットでは補給通知を40分で有効にす�
     #expect(plan.fuel.firstReminderMinutes == 40)
     #expect(plan.fuel.repeatIntervalMinutes == 40)
 }
+
+@Test("カスタム距離が15km以上なら補給通知を有効にする")
+func カスタム距離が十五km以上なら補給通知を有効にする() {
+    // Arrange
+    let customDistance = 15.0
+
+    // Act
+    let plan = ReminderPlanPreset.make(for: customDistance)
+
+    // Assert
+    #expect(plan.fuel.isEnabled)
+    #expect(plan.fuel.firstReminderMinutes == 40)
+}
