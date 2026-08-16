@@ -23,6 +23,14 @@ struct ContentView: View {
         selectedDistance.kilometers ?? Double(customDistance)
     }
 
+    private var validCustomDistanceKilometers: Double? {
+        guard let kilometers = Double(customDistance), (0.1...200).contains(kilometers) else {
+            return nil
+        }
+
+        return kilometers
+    }
+
     private var plan: ReminderPlan {
         ReminderPlan(
             hydration: setting(
@@ -147,7 +155,7 @@ struct ContentView: View {
                 }
             }
             .onChange(of: selectedDistance) { _, distance in
-                applyPreset(for: distance.kilometers)
+                applyPreset(for: distance == .custom ? validCustomDistanceKilometers : distance.kilometers)
             }
             .onChange(of: customDistance) { _, distance in
                 guard selectedDistance == .custom,
