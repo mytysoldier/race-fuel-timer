@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import RaceFuelTimer
 
@@ -93,4 +94,69 @@ func 通知済みの予定を次回予定から除外する() throws {
     #expect(nextAtStart == schedule[1])
     #expect(nextAfterFirstReminder == schedule[1])
     #expect(nextAtSessionEnd == nil)
+}
+
+@Test("15km未満のプリセットでは補給通知を無効にする")
+func 十五km未満のプリセットでは補給通知を無効にする() {
+    // Arrange
+    let distance = PlannedDistance.tenKilometers.kilometers
+
+    // Act
+    let plan = ReminderPlanPreset.make(for: distance)
+
+    // Assert
+    #expect(plan.hydration.isEnabled)
+    #expect(plan.hydration.firstReminderMinutes == 20)
+    #expect(!plan.fuel.isEnabled)
+}
+
+@Test("15km以上のプリセットでは補給通知を40分で有効にする")
+func 十五km以上のプリセットでは補給通知を40分で有効にする() {
+    // Arrange
+    let distance = PlannedDistance.halfMarathon.kilometers
+
+    // Act
+    let plan = ReminderPlanPreset.make(for: distance)
+
+    // Assert
+    #expect(plan.fuel.isEnabled)
+    #expect(plan.fuel.firstReminderMinutes == 40)
+    #expect(plan.fuel.repeatIntervalMinutes == 40)
+}
+
+@Test("カスタム距離が15km以上なら補給通知を有効にする")
+func カスタム距離が十五km以上なら補給通知を有効にする() {
+    // Arrange
+    let customDistance = 15.0
+
+    // Act
+    let plan = ReminderPlanPreset.make(for: customDistance)
+
+    // Assert
+    #expect(plan.fuel.isEnabled)
+    #expect(plan.fuel.firstReminderMinutes == 40)
+}
+
+@Test("小数点にカンマを使うロケールのカスタム距離を読み取る")
+func 小数点にカンマを使うロケールのカスタム距離を読み取る() {
+    // Arrange
+    let locale = Locale(identifier: "fr_FR")
+
+    // Act
+    let distance = DistanceParser.kilometers(from: "15,5", locale: locale)
+
+    // Assert
+    #expect(distance == 15.5)
+}
+
+@Test("単位などの末尾文字を含むカスタム距離を拒否する")
+func 単位などの末尾文字を含むカスタム距離を拒否する() {
+    // Arrange
+    let locale = Locale(identifier: "ja_JP")
+
+    // Act
+    let distance = DistanceParser.kilometers(from: "15 km", locale: locale)
+
+    // Assert
+    #expect(distance == nil)
 }
