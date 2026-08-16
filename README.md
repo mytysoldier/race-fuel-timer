@@ -1,52 +1,67 @@
-# ai-dev-template
+# ランニング補給タイマー
 
-AIエージェントを中心に、GitHub Issueでタスクを管理しながら個人開発を進めるためのテンプレートです。
+iPhone向けのランニング補給タイマーです。走行前に設定した時間ベースの給水・補給リマインダーを、端末内のローカル通知で届けます。
 
-このテンプレートは、以下のような進め方を前提にしています。
+通知は補給量や医療・栄養上の判断を指示するものではありません。体調、製品表示、専門家の助言を優先してください。
 
-- まず企画・要件・技術設計をIssueで整理する
-- MVPで作ること、作らないことを明確にする
-- 実装Issueを小さく分ける
-- AIエージェントはIssue単位で実装する
-- 実装後は検証、コミット、push、PR作成まで進める
-- レビューコメント対応後は再レビューを依頼する
+## MVPの範囲
 
-## 使い方
+- 予定距離の選択と、距離帯に応じた時間通知の初期セット
+- 給水・補給ごとの有効／無効、通知時刻・間隔・表示名の設定
+- セッションの開始・一時停止・再開・終了
+- 経過時間と次回予定の表示
+- iOSのローカル通知、設定の端末内保存、VoiceOver対応
 
-1. このリポジトリをテンプレートとして新しいリポジトリを作成する
-2. `docs/planning-template.md` をコピーして、作りたいサービスのMVP計画を書く
-3. `.github/ISSUE_TEMPLATE/design.md` から設計Issueを作る
-4. 設計IssueでMVP範囲と技術方針を確定する
-5. `.github/ISSUE_TEMPLATE/implementation.md` から実装Issueを小さく作る
-6. AIエージェントにIssue単位で実装を依頼する
+GPS距離計測・距離通知、地図、走行履歴、外部API、ログイン、クラウド同期、広告、解析SDK、課金はMVPに含めません。詳細な仕様は[docs/planning-template.md](docs/planning-template.md)を参照してください。
 
-## 推奨AI開発フロー
+## 技術方針
 
-- Codexを実装、テスト、Git操作、PR作成の主担当にする
-- GitHub Actionsでlint、型チェック、テスト、buildを必須確認にする
-- CodexのPRレビューをすべてのPRで使い、GitHub Actionsと人間の確認を補完する
-- GeminiやAntigravityは、別解の検討、資料・画像を含む調査、UI案の比較などの補助に使う
-- 複数のAIエージェントで同じブランチを同時に編集しない
+- iOS 17以上、Swift 5.9、SwiftUI
+- 通知: `UserNotifications` に絶対時刻のローカル通知を事前予約
+- 保存: `UserDefaults` に小さな設定データだけを保存
+- 配布: TestFlightで実機確認後、App Storeへ申請
 
-GeminiやAntigravityを使う場合も、実装の最終責任とPR作成はCodexに集約すると、変更の経緯とレビュー対象を追いやすくなります。
+サイレントモード、Focus、音量、ユーザーの通知設定によって、音・振動・表示は保証されません。Critical AlertやバックグラウンドGPS計測は使用しません。
 
-## AI向けルール
+## 開発状況
 
-AIエージェント向けの作業ルールは [AGENTS.md](AGENTS.md) にまとめています。
+現在は実装前の計画・技術設計フェーズを完了した段階です。SwiftUIプロジェクトとCIはIssue #5で追加します。
 
-Codexを含むAIコーディングエージェントには、まず `AGENTS.md` と対象Issueを読ませてから作業させてください。
+## 開発・検証手順（Issue #5で提供予定）
 
-## 用意しているテンプレート
+プロジェクト初期化後は、リポジトリ直下で次のコマンドを品質ゲートとして実行します。`lint`、`typecheck`、`test` はSwift向けの実行スクリプトとしてIssue #5で定義し、CIでも同じ検証を実行します。
 
-- `AGENTS.md`: AIエージェント向け作業ルール
-- `.github/ISSUE_TEMPLATE/design.md`: 企画・要件・技術設計Issue
-- `.github/ISSUE_TEMPLATE/implementation.md`: 実装Issue
-- `.github/ISSUE_TEMPLATE/qa.md`: 動作確認・公開前チェックIssue
-- `.github/PULL_REQUEST_TEMPLATE.md`: PR確認テンプレート
-- `docs/planning-template.md`: MVP計画ドキュメント雛形
+```sh
+make lint
+make typecheck
+make test
+make build
+```
 
-## 基本方針
+ローカルでの起動は、Xcodeで `RaceFuelTimer.xcodeproj` を開き、iOS 17以上のiPhoneシミュレータまたは実機を選択して実行します。プロジェクト作成後の正確な起動・ビルド手順はこのREADMEに追記します。
 
-個人開発では、完成度よりも公開できるMVPを優先します。
+## 実装順序
 
-AIには大きな曖昧な依頼を渡さず、Issueごとに目的、実装範囲、受け入れ条件、スコープ外を明記します。これにより、AIが勝手に機能を増やしたり、技術スタックを変更したりすることを防ぎます。
+1. #5: SwiftUIプロジェクトとCI品質ゲートを初期化する
+2. #6: 通知プランのデータモデルとスケジュール計算を実装する
+3. #7: 設定画面と入力バリデーションを実装する
+4. #8: 実行中タイマー画面と状態遷移を実装する
+5. #10: 音声・振動・ローカル通知を接続する
+6. #11: バックグラウンド移行・復帰時の整合性を実装する
+7. #12: 設定保存と破損データからの復旧を実装する
+8. #13: エラー状態・権限拒否・アクセシビリティを整備する
+9. #14と#15: 回帰手順、および安全・権限・プライバシー文言を整備する
+10. #16: TestFlightと実走でQAする
+11. #17: App Storeへ公開する
+
+距離通知のIssue #9は、時間通知のみとするMVP方針により対象外です。将来、別の実機Spikeで再評価します。
+
+## 並列化の方針
+
+#5〜#13は、同じSwiftUIアプリ基盤とセッション状態に順に依存するため直列で進めます。#14と#15は、#13完了後かつ通知実装（#10）の仕様が確定していれば、テスト・手順書と文言・静的コンテンツで変更対象を分けて並列化できます。#16と#17は公開品質に関わるため直列です。
+
+## ドキュメント
+
+- [MVP計画](docs/planning-template.md)
+- [補給・給水通知の調査](docs/research/fueling-hydration-notification-guidelines.md)
+- [iOS通知・バックグラウンドSpike](docs/background-notification-spike.md)
