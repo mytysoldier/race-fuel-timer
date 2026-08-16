@@ -10,7 +10,7 @@
 | 言語・UI | Swift 5.9、SwiftUI | 画面、状態に応じた表示、アクセシビリティを実装する |
 | 通知 | UserNotifications | 絶対時刻に変換したローカル通知の権限確認、予約、取消を行う |
 | 保存 | UserDefaults | 通知プランと前回選択距離だけを端末内に保存する |
-| 品質ゲート | Make、xcodebuild、GitHub Actions | lint、typecheck、test、buildをMakeから実行する。CIは無料枠を考慮してlint、typecheck、buildを実行する（#5で導入） |
+| 品質ゲート | Make、xcodebuild | lint、typecheck、test、buildをMakeからローカルで実行する（#5で導入） |
 
 外部API、サーバー、DB、ログイン、クラウド同期、広告SDK、解析SDK、課金SDKはMVPに追加しない。
 

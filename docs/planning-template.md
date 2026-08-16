@@ -123,7 +123,7 @@ SwiftUI、UserNotifications、UserDefaultsを使うiOSネイティブ構成と�
 - iPhoneの小さい画面、縦向き、Dynamic Type、VoiceOverで主要操作ができる
 - エラー、権限拒否、保存データ破損でアプリ全体がクラッシュしない
 - 前面、別アプリ前面、画面ロック中で、iOSへ予約した時間通知の挙動を実機確認する
-- `lint`、`typecheck`、`build` をCIで実行し、`test`はローカルで実行する。具体的なコマンドは#5でSwift向けに定義する
+- `lint`、`typecheck`、`test`、`build` をローカルで実行する。具体的なコマンドは#5でSwift向けに定義する
 
 ## 後続Issueの進め方
 
@@ -144,7 +144,7 @@ SwiftUI、UserNotifications、UserDefaultsを使うiOSネイティブ構成と�
 
 ### 検証コマンドの方針
 
-#5でリポジトリ直下に `make lint`、`make typecheck`、`make test`、`make build` を定義する。GitHub Actionsでは無料枠の消費を抑えるため `lint`、`typecheck`、`build` を実行し、`test` はローカルで実行する。iOS実機・シミュレータでしか確認できない通知・画面ロック・VoiceOverは、#14の手動回帰チェックリストで管理する。
+#5でリポジトリ直下に `make lint`、`make typecheck`、`make test`、`make build` を定義し、すべてローカルで実行する。iOS実機・シミュレータでしか確認できない通知・画面ロック・VoiceOverは、#14の手動回帰チェックリストで管理する。
 
 ## 参考資料
 
