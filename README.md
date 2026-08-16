@@ -12,16 +12,11 @@ iPhone向けのランニング補給タイマーです。走行前に設定し�
 - 経過時間と次回予定の表示
 - iOSのローカル通知、設定の端末内保存、VoiceOver対応
 
-GPS距離計測・距離通知、地図、走行履歴、外部API、ログイン、クラウド同期、広告、解析SDK、課金はMVPに含めません。詳細な仕様は[docs/planning-template.md](docs/planning-template.md)を参照してください。
+GPS距離計測・距離通知、地図、走行履歴、外部API、ログイン、クラウド同期、広告、解析SDK、課金はMVPに含めません。詳細な仕様は[docs/planning-template.md](docs/planning-template.md)、技術構成は[docs/architecture.md](docs/architecture.md)を参照してください。
 
 ## 技術方針
 
-- iOS 17以上、Swift 5.9、SwiftUI
-- 通知: `UserNotifications` に絶対時刻のローカル通知を事前予約
-- 保存: `UserDefaults` に小さな設定データだけを保存
-- 配布: TestFlightで実機確認後、App Storeへ申請
-
-サイレントモード、Focus、音量、ユーザーの通知設定によって、音・振動・表示は保証されません。Critical AlertやバックグラウンドGPS計測は使用しません。
+iOS 17以上のSwiftUIアプリとして、`UserNotifications` に時間ベースのローカル通知を事前予約し、設定だけを `UserDefaults` へ保存します。詳細なアーキテクチャは[docs/architecture.md](docs/architecture.md)に集約しています。
 
 ## 開発状況
 
@@ -63,5 +58,6 @@ make build
 ## ドキュメント
 
 - [MVP計画](docs/planning-template.md)
+- [技術アーキテクチャ](docs/architecture.md)
 - [補給・給水通知の調査](docs/research/fueling-hydration-notification-guidelines.md)
 - [iOS通知・バックグラウンドSpike](docs/background-notification-spike.md)
