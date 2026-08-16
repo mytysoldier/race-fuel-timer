@@ -94,3 +94,31 @@ func 通知済みの予定を次回予定から除外する() throws {
     #expect(nextAfterFirstReminder == schedule[1])
     #expect(nextAtSessionEnd == nil)
 }
+
+@Test("15km未満のプリセットでは補給通知を無効にする")
+func 十五km未満のプリセットでは補給通知を無効にする() {
+    // Arrange
+    let distance = PlannedDistance.tenKilometers.kilometers
+
+    // Act
+    let plan = ReminderPlanPreset.make(for: distance)
+
+    // Assert
+    #expect(plan.hydration.isEnabled)
+    #expect(plan.hydration.firstReminderMinutes == 20)
+    #expect(!plan.fuel.isEnabled)
+}
+
+@Test("15km以上のプリセットでは補給通知を40分で有効にする")
+func 十五km以上のプリセットでは補給通知を40分で有効にする() {
+    // Arrange
+    let distance = PlannedDistance.halfMarathon.kilometers
+
+    // Act
+    let plan = ReminderPlanPreset.make(for: distance)
+
+    // Assert
+    #expect(plan.fuel.isEnabled)
+    #expect(plan.fuel.firstReminderMinutes == 40)
+    #expect(plan.fuel.repeatIntervalMinutes == 40)
+}

@@ -1,5 +1,54 @@
 import Foundation
 
+enum PlannedDistance: String, CaseIterable, Identifiable {
+    case fiveKilometers
+    case tenKilometers
+    case halfMarathon
+    case fullMarathon
+    case custom
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .fiveKilometers: "5 km"
+        case .tenKilometers: "10 km"
+        case .halfMarathon: "ハーフ"
+        case .fullMarathon: "フル"
+        case .custom: "カスタム"
+        }
+    }
+
+    var kilometers: Double? {
+        switch self {
+        case .fiveKilometers: 5
+        case .tenKilometers: 10
+        case .halfMarathon: 21.0975
+        case .fullMarathon: 42.195
+        case .custom: nil
+        }
+    }
+}
+
+enum ReminderPlanPreset {
+    static func make(for distanceKilometers: Double?) -> ReminderPlan {
+        let fuelIsEnabled = (distanceKilometers ?? 0) >= 15
+
+        return ReminderPlan(
+            hydration: .init(
+                isEnabled: true,
+                firstReminderMinutes: 20,
+                repeatIntervalMinutes: 20
+            ),
+            fuel: .init(
+                isEnabled: fuelIsEnabled,
+                firstReminderMinutes: fuelIsEnabled ? 40 : nil,
+                repeatIntervalMinutes: fuelIsEnabled ? 40 : nil
+            )
+        )
+    }
+}
+
 enum ReminderKind: String, CaseIterable, Hashable {
     case hydration
     case fuel
