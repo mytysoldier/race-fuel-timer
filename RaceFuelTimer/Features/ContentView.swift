@@ -20,11 +20,13 @@ struct ContentView: View {
     }
 
     private var selectedDistanceKilometers: Double? {
-        selectedDistance.kilometers ?? Double(customDistance)
+        selectedDistance.kilometers ?? DistanceParser.kilometers(from: customDistance)
     }
 
     private var validCustomDistanceKilometers: Double? {
-        guard let kilometers = Double(customDistance), (0.1...200).contains(kilometers) else {
+        guard let kilometers = DistanceParser.kilometers(from: customDistance),
+              (0.1...200).contains(kilometers)
+        else {
             return nil
         }
 
@@ -159,7 +161,7 @@ struct ContentView: View {
             }
             .onChange(of: customDistance) { _, distance in
                 guard selectedDistance == .custom,
-                      let kilometers = Double(distance),
+                      let kilometers = DistanceParser.kilometers(from: distance),
                       (0.1...200).contains(kilometers)
                 else {
                     return

@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import RaceFuelTimer
 
@@ -134,4 +135,16 @@ func カスタム距離が十五km以上なら補給通知を有効にする() {
     // Assert
     #expect(plan.fuel.isEnabled)
     #expect(plan.fuel.firstReminderMinutes == 40)
+}
+
+@Test("小数点にカンマを使うロケールのカスタム距離を読み取る")
+func 小数点にカンマを使うロケールのカスタム距離を読み取る() {
+    // Arrange
+    let locale = Locale(identifier: "fr_FR")
+
+    // Act
+    let distance = DistanceParser.kilometers(from: "15,5", locale: locale)
+
+    // Assert
+    #expect(distance == 15.5)
 }
