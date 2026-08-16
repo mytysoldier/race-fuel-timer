@@ -18,13 +18,9 @@ GPS距離計測・距離通知、地図、走行履歴、外部API、ログイ�
 
 iOS 17以上のSwiftUIアプリとして、`UserNotifications` に時間ベースのローカル通知を事前予約し、設定だけを `UserDefaults` へ保存します。詳細なアーキテクチャは[docs/architecture.md](docs/architecture.md)に集約しています。
 
-## 開発状況
+## 開発・検証手順
 
-現在は実装前の計画・技術設計フェーズを完了した段階です。SwiftUIプロジェクトとCIはIssue #5で追加します。
-
-## 開発・検証手順（Issue #5で提供予定）
-
-プロジェクト初期化後は、リポジトリ直下で次のコマンドを品質ゲートとして実行します。`lint`、`typecheck`、`test` はSwift向けの実行スクリプトとしてIssue #5で定義し、CIでも同じ検証を実行します。
+必要環境は Xcode 16 以降（iOS 17 Simulator を含む）です。依存する外部ライブラリはありません。リポジトリ直下で次の品質ゲートを実行できます。
 
 ```sh
 make lint
@@ -33,7 +29,9 @@ make test
 make build
 ```
 
-ローカルでの起動は、Xcodeで `RaceFuelTimer.xcodeproj` を開き、iOS 17以上のiPhoneシミュレータまたは実機を選択して実行します。プロジェクト作成後の正確な起動・ビルド手順はこのREADMEに追記します。
+`make lint` は Swift コンパイラの構文解析でソースの基本チェックを行います。`typecheck` はテスト用ビルド、`test` は iPhone 17 Pro Simulator 上の単体テスト、`build` は Simulator 向けアプリビルドです。
+
+ローカルで起動するには、Xcode で `RaceFuelTimer.xcodeproj` を開き、iOS 17 以上の iPhone Simulator または実機を選び、`RaceFuelTimer` スキームを実行します。実機で実行する場合は、自分の Apple Developer Team を Signing & Capabilities で選択してください。
 
 ## 実装順序
 

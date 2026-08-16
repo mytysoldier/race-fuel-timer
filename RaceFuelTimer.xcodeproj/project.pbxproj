@@ -1,0 +1,79 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* RaceFuelTimerApp.swift */; };
+		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ContentView.swift */; };
+		A10000000000000000000003 /* RaceFuelTimerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* RaceFuelTimerTests.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A10000000000000000000011 /* RaceFuelTimerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelTimerApp.swift; sourceTree = "<group>"; };
+		A10000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A10000000000000000000013 /* RaceFuelTimerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelTimerTests.swift; sourceTree = "<group>"; };
+		A10000000000000000000014 /* RaceFuelTimer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RaceFuelTimer.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000015 /* RaceFuelTimerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RaceFuelTimerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A10000000000000000000024 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000025 /* Frameworks */ = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A10000000000000000000030 = {isa = PBXGroup; children = (A10000000000000000000031 /* RaceFuelTimer */, A10000000000000000000032 /* RaceFuelTimerTests */, A10000000000000000000033 /* Products */); sourceTree = "<group>"; };
+		A10000000000000000000031 /* RaceFuelTimer */ = {isa = PBXGroup; children = (A10000000000000000000034 /* App */, A10000000000000000000035 /* Features */); path = RaceFuelTimer; sourceTree = "<group>"; };
+		A10000000000000000000032 /* RaceFuelTimerTests */ = {isa = PBXGroup; children = (A10000000000000000000013 /* RaceFuelTimerTests.swift */); path = RaceFuelTimerTests; sourceTree = "<group>"; };
+		A10000000000000000000033 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000014 /* RaceFuelTimer.app */, A10000000000000000000015 /* RaceFuelTimerTests.xctest */); name = Products; sourceTree = "<group>"; };
+		A10000000000000000000034 /* App */ = {isa = PBXGroup; children = (A10000000000000000000011 /* RaceFuelTimerApp.swift */); path = App; sourceTree = "<group>"; };
+		A10000000000000000000035 /* Features */ = {isa = PBXGroup; children = (A10000000000000000000012 /* ContentView.swift */); path = Features; sourceTree = "<group>"; };
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A10000000000000000000040 /* RaceFuelTimer */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000050 /* Build configuration list for PBXNativeTarget \"RaceFuelTimer\" */; buildPhases = (A10000000000000000000023 /* Sources */, A10000000000000000000024 /* Frameworks */, A10000000000000000000026 /* Resources */); buildRules = (); dependencies = (); name = RaceFuelTimer; productName = RaceFuelTimer; productReference = A10000000000000000000014 /* RaceFuelTimer.app */; productType = "com.apple.product-type.application"; };
+		A10000000000000000000041 /* RaceFuelTimerTests */ = {isa = PBXNativeTarget; buildConfigurationList = A10000000000000000000051 /* Build configuration list for PBXNativeTarget \"RaceFuelTimerTests\" */; buildPhases = (A10000000000000000000022 /* Sources */, A10000000000000000000025 /* Frameworks */, A10000000000000000000027 /* Resources */); buildRules = (); dependencies = (A10000000000000000000042 /* PBXTargetDependency */); name = RaceFuelTimerTests; productName = RaceFuelTimerTests; productReference = A10000000000000000000015 /* RaceFuelTimerTests.xctest */; productType = "com.apple.product-type.bundle.unit-test"; };
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A10000000000000000000060 /* Project object */ = {isa = PBXProject; attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 2600; LastUpgradeCheck = 2600; TargetAttributes = { A10000000000000000000040 = { CreatedOnToolsVersion = 26.2; }; A10000000000000000000041 = { CreatedOnToolsVersion = 26.2; TestTargetID = A10000000000000000000040; }; }; }; buildConfigurationList = A10000000000000000000052 /* Build configuration list for PBXProject \"RaceFuelTimer\" */; compatibilityVersion = "Xcode 14.0"; developmentRegion = en; hasScannedForEncodings = 0; knownRegions = (en, Base); mainGroup = A10000000000000000000030; productRefGroup = A10000000000000000000033 /* Products */; projectDirPath = ""; projectRoot = ""; targets = (A10000000000000000000040 /* RaceFuelTimer */, A10000000000000000000041 /* RaceFuelTimerTests */); };
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A10000000000000000000026 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000027 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A10000000000000000000022 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* RaceFuelTimerTests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000023 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */, A10000000000000000000002 /* ContentView.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A10000000000000000000042 /* PBXTargetDependency */ = {isa = PBXTargetDependency; target = A10000000000000000000040 /* RaceFuelTimer */; targetProxy = A10000000000000000000043 /* PBXContainerItemProxy */; };
+/* End PBXTargetDependency section */
+
+/* Begin PBXContainerItemProxy section */
+		A10000000000000000000043 /* PBXContainerItemProxy */ = {isa = PBXContainerItemProxy; containerPortal = A10000000000000000000060 /* Project object */; proxyType = 1; remoteGlobalIDString = A10000000000000000000040; remoteInfo = RaceFuelTimer; };
+/* End PBXContainerItemProxy section */
+
+/* Begin XCBuildConfiguration section */
+		A10000000000000000000070 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES; COPY_PHASE_STRIP = NO; DEBUG_INFORMATION_FORMAT = dwarf; ENABLE_TESTABILITY = YES; GCC_C_LANGUAGE_STANDARD = gnu17; GCC_NO_COMMON_BLOCKS = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; SDKROOT = iphoneos; SWIFT_VERSION = 5.9; TARGETED_DEVICE_FAMILY = 1; }; name = Debug; };
+		A10000000000000000000071 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { ALWAYS_SEARCH_USER_PATHS = NO; CLANG_ENABLE_MODULES = YES; CLANG_ENABLE_OBJC_ARC = YES; COPY_PHASE_STRIP = YES; DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym"; GCC_C_LANGUAGE_STANDARD = gnu17; IPHONEOS_DEPLOYMENT_TARGET = 17.0; LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks"; SDKROOT = iphoneos; SWIFT_COMPILATION_MODE = wholemodule; SWIFT_OPTIMIZATION_LEVEL = "-O"; SWIFT_VERSION = 5.9; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
+		A10000000000000000000072 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelTimerTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.9; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RaceFuelTimer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RaceFuelTimer"; }; name = Debug; };
+		A10000000000000000000073 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { BUNDLE_LOADER = "$(TEST_HOST)"; GENERATE_INFOPLIST_FILE = YES; IPHONEOS_DEPLOYMENT_TARGET = 17.0; PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelTimerTests; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_VERSION = 5.9; TARGETED_DEVICE_FAMILY = 1; TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RaceFuelTimer.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RaceFuelTimer"; }; name = Release; };
+		A10000000000000000000074 /* Debug */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelTimer; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.9; TARGETED_DEVICE_FAMILY = 1; }; name = Debug; };
+		A10000000000000000000075 /* Release */ = {isa = XCBuildConfiguration; buildSettings = { CODE_SIGN_STYLE = Automatic; CURRENT_PROJECT_VERSION = 1; DEVELOPMENT_TEAM = ""; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait; IPHONEOS_DEPLOYMENT_TARGET = 17.0; MARKETING_VERSION = 0.1.0; PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelTimer; PRODUCT_NAME = "$(TARGET_NAME)"; SWIFT_EMIT_LOC_STRINGS = YES; SWIFT_VERSION = 5.9; TARGETED_DEVICE_FAMILY = 1; }; name = Release; };
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A10000000000000000000050 /* Build configuration list for PBXNativeTarget \"RaceFuelTimer\" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000074 /* Debug */, A10000000000000000000075 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A10000000000000000000051 /* Build configuration list for PBXNativeTarget \"RaceFuelTimerTests\" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000072 /* Debug */, A10000000000000000000073 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		A10000000000000000000052 /* Build configuration list for PBXProject \"RaceFuelTimer\" */ = {isa = XCConfigurationList; buildConfigurations = (A10000000000000000000070 /* Debug */, A10000000000000000000071 /* Release */); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+/* End XCConfigurationList section */
+	};
+	rootObject = A10000000000000000000060 /* Project object */;
+}
