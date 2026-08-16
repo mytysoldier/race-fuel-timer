@@ -8,15 +8,17 @@
 /* Begin PBXBuildFile section */
 		A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000011 /* RaceFuelTimerApp.swift */; };
 		A10000000000000000000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000012 /* ContentView.swift */; };
-		A10000000000000000000003 /* RaceFuelTimerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000013 /* RaceFuelTimerTests.swift */; };
+		A10000000000000000000004 /* ReminderSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000016 /* ReminderSchedule.swift */; };
+		A10000000000000000000005 /* ReminderScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000017 /* ReminderScheduleTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		A10000000000000000000011 /* RaceFuelTimerApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelTimerApp.swift; sourceTree = "<group>"; };
 		A10000000000000000000012 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		A10000000000000000000013 /* RaceFuelTimerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelTimerTests.swift; sourceTree = "<group>"; };
 		A10000000000000000000014 /* RaceFuelTimer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = RaceFuelTimer.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A10000000000000000000015 /* RaceFuelTimerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RaceFuelTimerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A10000000000000000000016 /* ReminderSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderSchedule.swift; sourceTree = "<group>"; };
+		A10000000000000000000017 /* ReminderScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduleTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -26,11 +28,12 @@
 
 /* Begin PBXGroup section */
 		A10000000000000000000030 = {isa = PBXGroup; children = (A10000000000000000000031 /* RaceFuelTimer */, A10000000000000000000032 /* RaceFuelTimerTests */, A10000000000000000000033 /* Products */); sourceTree = "<group>"; };
-		A10000000000000000000031 /* RaceFuelTimer */ = {isa = PBXGroup; children = (A10000000000000000000034 /* App */, A10000000000000000000035 /* Features */); path = RaceFuelTimer; sourceTree = "<group>"; };
-		A10000000000000000000032 /* RaceFuelTimerTests */ = {isa = PBXGroup; children = (A10000000000000000000013 /* RaceFuelTimerTests.swift */); path = RaceFuelTimerTests; sourceTree = "<group>"; };
+		A10000000000000000000031 /* RaceFuelTimer */ = {isa = PBXGroup; children = (A10000000000000000000034 /* App */, A10000000000000000000035 /* Features */, A10000000000000000000036 /* Domain */); path = RaceFuelTimer; sourceTree = "<group>"; };
+		A10000000000000000000032 /* RaceFuelTimerTests */ = {isa = PBXGroup; children = (A10000000000000000000017 /* ReminderScheduleTests.swift */); path = RaceFuelTimerTests; sourceTree = "<group>"; };
 		A10000000000000000000033 /* Products */ = {isa = PBXGroup; children = (A10000000000000000000014 /* RaceFuelTimer.app */, A10000000000000000000015 /* RaceFuelTimerTests.xctest */); name = Products; sourceTree = "<group>"; };
 		A10000000000000000000034 /* App */ = {isa = PBXGroup; children = (A10000000000000000000011 /* RaceFuelTimerApp.swift */); path = App; sourceTree = "<group>"; };
 		A10000000000000000000035 /* Features */ = {isa = PBXGroup; children = (A10000000000000000000012 /* ContentView.swift */); path = Features; sourceTree = "<group>"; };
+		A10000000000000000000036 /* Domain */ = {isa = PBXGroup; children = (A10000000000000000000016 /* ReminderSchedule.swift */); path = Domain; sourceTree = "<group>"; };
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -48,8 +51,8 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A10000000000000000000022 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000003 /* RaceFuelTimerTests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
-		A10000000000000000000023 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */, A10000000000000000000002 /* ContentView.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000022 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000005 /* ReminderScheduleTests.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
+		A10000000000000000000023 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (A10000000000000000000001 /* RaceFuelTimerApp.swift in Sources */, A10000000000000000000002 /* ContentView.swift in Sources */, A10000000000000000000004 /* ReminderSchedule.swift in Sources */); runOnlyForDeploymentPostprocessing = 0; };
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
