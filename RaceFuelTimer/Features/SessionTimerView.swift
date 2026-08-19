@@ -73,7 +73,7 @@ struct SessionTimerView: View {
     private func nextReminderSection(_ reminders: [(ReminderKind, ScheduledReminder)], at date: Date) -> some View {
         GroupBox("次の予定") {
             if reminders.isEmpty {
-                Text("このセッションに残っている予定はありません。")
+                Text("次の給水・補給予定はありません")
                     .foregroundStyle(.secondary)
             } else {
                 VStack(alignment: .leading, spacing: 12) {
