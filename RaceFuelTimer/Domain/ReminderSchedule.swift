@@ -200,6 +200,7 @@ struct Session: Equatable {
     private(set) var state: SessionState
     let startedAt: Date
     private(set) var pausedAt: Date?
+    private(set) var endedAt: Date?
     private(set) var totalPausedSeconds: TimeInterval
     let schedule: [ScheduledReminder]
     private(set) var reminderExecutionState: ReminderExecutionState
@@ -208,6 +209,7 @@ struct Session: Equatable {
         state = .running
         self.startedAt = startedAt
         pausedAt = nil
+        endedAt = nil
         totalPausedSeconds = 0
         schedule = try plan.schedule().get()
         reminderExecutionState = ReminderExecutionState()
@@ -235,6 +237,7 @@ struct Session: Equatable {
             totalPausedSeconds += max(0, date.timeIntervalSince(pausedAt))
             self.pausedAt = nil
         }
+        endedAt = date
         state = .ended
     }
 
@@ -243,7 +246,7 @@ struct Session: Equatable {
     }
 
     func elapsedSeconds(at date: Date) -> TimeInterval {
-        let endDate = pausedAt ?? date
+        let endDate = endedAt ?? pausedAt ?? date
         return max(0, endDate.timeIntervalSince(startedAt) - totalPausedSeconds)
     }
 

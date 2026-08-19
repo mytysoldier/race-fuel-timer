@@ -13,45 +13,48 @@ struct SessionTimerView: View {
                 session.nextReminder(for: kind, at: context.date).map { (kind, $0) }
             }
 
-            VStack(spacing: 28) {
-                Text(session.state == .paused ? "一時停止中" : "実行中")
-                    .font(.headline)
-                    .foregroundStyle(session.state == .paused ? .orange : .green)
-
-                VStack(spacing: 8) {
-                    Text("経過時間")
+            ScrollView {
+                VStack(spacing: 28) {
+                    Text(session.state == .paused ? "一時停止中" : "実行中")
                         .font(.headline)
-                        .foregroundStyle(.secondary)
-                    Text(formattedTime(elapsedSeconds))
-                        .font(.system(size: 64, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .accessibilityLabel("経過時間 \(formattedTime(elapsedSeconds))")
-                }
+                        .foregroundStyle(session.state == .paused ? .orange : .green)
 
-                nextReminderSection(nextReminders, at: context.date)
-
-                Spacer()
-
-                Button(session.state == .paused ? "再開" : "一時停止") {
-                    if session.state == .paused {
-                        session.resume(at: .now)
-                    } else {
-                        session.pause(at: .now)
+                    VStack(spacing: 8) {
+                        Text("経過時間")
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
+                        Text(formattedTime(elapsedSeconds))
+                            .font(.system(size: 64, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .accessibilityLabel("経過時間 \(formattedTime(elapsedSeconds))")
                     }
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
-                .accessibilityHint(session.state == .paused ? "タイマーと予定を再開します" : "タイマーと予定を止めます")
 
-                Button("終了", role: .destructive) {
-                    isEndConfirmationPresented = true
+                    nextReminderSection(nextReminders, at: context.date)
+
+                    Spacer(minLength: 12)
+
+                    Button(session.state == .paused ? "再開" : "一時停止") {
+                        if session.state == .paused {
+                            session.resume(at: .now)
+                        } else {
+                            session.pause(at: .now)
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+                    .accessibilityHint(session.state == .paused ? "タイマーと予定を再開します" : "タイマーと予定を止めます")
+
+                    Button("終了", role: .destructive) {
+                        isEndConfirmationPresented = true
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-                .frame(maxWidth: .infinity)
             }
-            .padding()
+            .contentMargins(.horizontal, 16, for: .scrollContent)
+            .contentMargins(.vertical, 16, for: .scrollContent)
         }
         .navigationTitle("ランニング中")
         .navigationBarTitleDisplayMode(.inline)

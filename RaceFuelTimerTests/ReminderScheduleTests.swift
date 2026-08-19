@@ -223,6 +223,25 @@ func 終了したセッションは停止時間を確定して状態を終了に
     #expect(session.elapsedMinutes(at: startedAt.addingTimeInterval(50 * 60)) == 10)
 }
 
+@Test("実行中から終了したセッションの経過時間を固定する")
+func 実行中から終了したセッションの経過時間を固定する() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+
+    // Act
+    session.end(at: startedAt.addingTimeInterval(30 * 60))
+    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(50 * 60))
+
+    // Assert
+    #expect(session.state == .ended)
+    #expect(elapsedMinutes == 30)
+}
+
 @Test("給水と補給の次回予定をそれぞれ取得する")
 func 給水と補給の次回予定をそれぞれ取得する() throws {
     // Arrange
