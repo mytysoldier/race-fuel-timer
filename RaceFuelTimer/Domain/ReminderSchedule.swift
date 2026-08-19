@@ -189,3 +189,82 @@ struct ReminderExecutionState: Equatable {
         }
     }
 }
+
+enum SessionState: Equatable {
+    case running
+    case paused
+    case ended
+}
+
+struct Session: Equatable {
+    private(set) var state: SessionState
+    let startedAt: Date
+    private(set) var pausedAt: Date?
+    private(set) var endedAt: Date?
+    private(set) var totalPausedSeconds: TimeInterval
+    let schedule: [ScheduledReminder]
+    private(set) var reminderExecutionState: ReminderExecutionState
+
+    init(plan: ReminderPlan, startedAt: Date = .now) throws {
+        state = .running
+        self.startedAt = startedAt
+        pausedAt = nil
+        endedAt = nil
+        totalPausedSeconds = 0
+        schedule = try plan.schedule().get()
+        reminderExecutionState = ReminderExecutionState()
+    }
+
+    mutating func pause(at date: Date) {
+        guard state == .running else { return }
+
+        state = .paused
+        pausedAt = date
+    }
+
+    mutating func resume(at date: Date) {
+        guard state == .paused, let pausedAt else { return }
+
+        totalPausedSeconds += max(0, date.timeIntervalSince(pausedAt))
+        self.pausedAt = nil
+        state = .running
+    }
+
+    mutating func end(at date: Date) {
+        guard state != .ended else { return }
+
+        if state == .paused, let pausedAt {
+            totalPausedSeconds += max(0, date.timeIntervalSince(pausedAt))
+            self.pausedAt = nil
+        }
+        endedAt = date
+        state = .ended
+    }
+
+    mutating func markDelivered(_ reminder: ScheduledReminder) {
+        reminderExecutionState.markDelivered(reminder)
+    }
+
+    func elapsedSeconds(at date: Date) -> TimeInterval {
+        let endDate = endedAt ?? pausedAt ?? date
+        return max(0, endDate.timeIntervalSince(startedAt) - totalPausedSeconds)
+    }
+
+    func elapsedMinutes(at date: Date) -> Int {
+        Int(elapsedSeconds(at: date) / 60)
+    }
+
+    func nextReminder(at date: Date) -> ScheduledReminder? {
+        reminderExecutionState.nextReminder(
+            in: schedule,
+            afterElapsedMinutes: elapsedMinutes(at: date)
+        )
+    }
+
+    func nextReminder(for kind: ReminderKind, at date: Date) -> ScheduledReminder? {
+        reminderExecutionState.nextReminder(
+            in: schedule.filter { $0.kinds.contains(kind) },
+            afterElapsedMinutes: elapsedMinutes(at: date)
+        )
+    }
+}

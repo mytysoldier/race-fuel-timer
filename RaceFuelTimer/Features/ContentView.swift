@@ -73,8 +73,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
+        ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("ランニング補給タイマー")
@@ -169,7 +168,6 @@ struct ContentView: View {
 
                 applyPreset(for: kilometers)
             }
-        }
     }
 
     private func reminderSection(

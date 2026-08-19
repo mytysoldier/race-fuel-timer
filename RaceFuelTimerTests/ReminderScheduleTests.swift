@@ -160,3 +160,103 @@ func 単位などの末尾文字を含むカスタム距離を拒否する() {
     // Assert
     #expect(distance == nil)
 }
+
+@Test("一時停止中は経過時間と次回予定が進まない")
+func 一時停止中は経過時間と次回予定が進まない() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+    session.pause(at: startedAt.addingTimeInterval(10 * 60))
+
+    // Act
+    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(40 * 60))
+    let nextReminder = session.nextReminder(at: startedAt.addingTimeInterval(40 * 60))
+
+    // Assert
+    #expect(session.state == .paused)
+    #expect(elapsedMinutes == 10)
+    #expect(nextReminder?.trigger == .elapsedMinutes(20))
+}
+
+@Test("再開後は停止時間を除いた経過時間で次回予定を計算する")
+func 再開後は停止時間を除いた経過時間で次回予定を計算する() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+    session.pause(at: startedAt.addingTimeInterval(10 * 60))
+    session.resume(at: startedAt.addingTimeInterval(40 * 60))
+
+    // Act
+    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(50 * 60))
+    let nextReminder = session.nextReminder(at: startedAt.addingTimeInterval(50 * 60))
+
+    // Assert
+    #expect(session.state == .running)
+    #expect(elapsedMinutes == 20)
+    #expect(nextReminder?.trigger == .elapsedMinutes(40))
+}
+
+@Test("終了したセッションは停止時間を確定して状態を終了にする")
+func 終了したセッションは停止時間を確定して状態を終了にする() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+    session.pause(at: startedAt.addingTimeInterval(10 * 60))
+
+    // Act
+    session.end(at: startedAt.addingTimeInterval(40 * 60))
+
+    // Assert
+    #expect(session.state == .ended)
+    #expect(session.elapsedMinutes(at: startedAt.addingTimeInterval(50 * 60)) == 10)
+}
+
+@Test("実行中から終了したセッションの経過時間を固定する")
+func 実行中から終了したセッションの経過時間を固定する() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+
+    // Act
+    session.end(at: startedAt.addingTimeInterval(30 * 60))
+    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(50 * 60))
+
+    // Assert
+    #expect(session.state == .ended)
+    #expect(elapsedMinutes == 30)
+}
+
+@Test("給水と補給の次回予定をそれぞれ取得する")
+func 給水と補給の次回予定をそれぞれ取得する() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: true, firstReminderMinutes: 40, repeatIntervalMinutes: 40)
+    )
+    let session = try Session(plan: plan, startedAt: startedAt)
+
+    // Act
+    let hydrationReminder = session.nextReminder(for: .hydration, at: startedAt)
+    let fuelReminder = session.nextReminder(for: .fuel, at: startedAt)
+
+    // Assert
+    #expect(hydrationReminder?.trigger == .elapsedMinutes(20))
+    #expect(fuelReminder?.trigger == .elapsedMinutes(40))
+}
