@@ -7,7 +7,7 @@ struct RaceFuelTimerApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                // Optional の Session を、画面が更新できる Binding<Session> として安全に取り出す。
+                // switch でも分岐できるが、Optional の Binding<Session> を安全に取り出す目的が明確な if let を使う。
                 if let sessionBinding = Binding($session) {
                     SessionTimerView(session: sessionBinding) {
                         session = nil
