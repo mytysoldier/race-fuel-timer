@@ -9,7 +9,9 @@ struct SessionTimerView: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsedSeconds = session.elapsedSeconds(at: context.date)
-            let nextReminder = session.nextReminder(at: context.date)
+            let nextReminders = ReminderKind.allCases.compactMap { kind in
+                session.nextReminder(for: kind, at: context.date).map { (kind, $0) }
+            }
 
             VStack(spacing: 28) {
                 Text(session.state == .paused ? "一時停止中" : "実行中")
@@ -23,10 +25,10 @@ struct SessionTimerView: View {
                     Text(formattedTime(elapsedSeconds))
                         .font(.system(size: 64, weight: .bold, design: .rounded))
                         .monospacedDigit()
-                        .accessibilityLabel("経過時間 \\(formattedTime(elapsedSeconds))")
+                        .accessibilityLabel("経過時間 \(formattedTime(elapsedSeconds))")
                 }
 
-                nextReminderSection(nextReminder, at: context.date)
+                nextReminderSection(nextReminders, at: context.date)
 
                 Spacer()
 
@@ -65,21 +67,25 @@ struct SessionTimerView: View {
     }
 
     @ViewBuilder
-    private func nextReminderSection(_ reminder: ScheduledReminder?, at date: Date) -> some View {
+    private func nextReminderSection(_ reminders: [(ReminderKind, ScheduledReminder)], at date: Date) -> some View {
         GroupBox("次の予定") {
-            if let reminder {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(reminder.displayNames.values.sorted().joined(separator: "・"))
-                        .font(.title2.bold())
-                    Text("開始から \\(reminder.trigger.minutes) 分")
-                    Text("あと \\(remainingTime(until: reminder, at: date))")
-                        .foregroundStyle(.secondary)
+            if reminders.isEmpty {
+                Text("このセッションに残っている予定はありません。")
+                    .foregroundStyle(.secondary)
+            } else {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(reminders, id: \.0) { kind, reminder in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(reminder.displayNames[kind] ?? kind.defaultDisplayName)
+                                .font(.title2.bold())
+                            Text("開始から \(reminder.trigger.minutes) 分")
+                            Text("あと \(remainingTime(until: reminder, at: date))")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .combine)
-            } else {
-                Text("このセッションに残っている予定はありません。")
-                    .foregroundStyle(.secondary)
             }
         }
     }

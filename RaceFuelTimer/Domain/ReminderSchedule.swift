@@ -257,4 +257,11 @@ struct Session: Equatable {
             afterElapsedMinutes: elapsedMinutes(at: date)
         )
     }
+
+    func nextReminder(for kind: ReminderKind, at date: Date) -> ScheduledReminder? {
+        reminderExecutionState.nextReminder(
+            in: schedule.filter { $0.kinds.contains(kind) },
+            afterElapsedMinutes: elapsedMinutes(at: date)
+        )
+    }
 }

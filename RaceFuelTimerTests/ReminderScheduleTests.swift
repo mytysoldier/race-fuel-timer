@@ -222,3 +222,22 @@ func 終了したセッションは停止時間を確定して状態を終了に
     #expect(session.state == .ended)
     #expect(session.elapsedMinutes(at: startedAt.addingTimeInterval(50 * 60)) == 10)
 }
+
+@Test("給水と補給の次回予定をそれぞれ取得する")
+func 給水と補給の次回予定をそれぞれ取得する() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: true, firstReminderMinutes: 40, repeatIntervalMinutes: 40)
+    )
+    let session = try Session(plan: plan, startedAt: startedAt)
+
+    // Act
+    let hydrationReminder = session.nextReminder(for: .hydration, at: startedAt)
+    let fuelReminder = session.nextReminder(for: .fuel, at: startedAt)
+
+    // Assert
+    #expect(hydrationReminder?.trigger == .elapsedMinutes(20))
+    #expect(fuelReminder?.trigger == .elapsedMinutes(40))
+}
