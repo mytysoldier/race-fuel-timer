@@ -18,8 +18,12 @@ struct RaceFuelTimerApp: App {
                             notificationScheduler.cancelScheduledReminders()
                         },
                         onResume: { session in
+                            let operationID = notificationScheduler.beginNotificationOperation()
                             Task {
-                                await notificationScheduler.scheduleReminders(for: session)
+                                await notificationScheduler.scheduleReminders(
+                                    for: session,
+                                    operationID: operationID
+                                )
                             }
                         }
                     ) { _ in
@@ -32,8 +36,12 @@ struct RaceFuelTimerApp: App {
                         session = newSession
 
                         guard shouldRequestNotificationPermission else { return }
+                        let operationID = notificationScheduler.beginNotificationOperation()
                         Task {
-                            await notificationScheduler.requestAuthorizationAndSchedule(for: newSession)
+                            await notificationScheduler.requestAuthorizationAndSchedule(
+                                for: newSession,
+                                operationID: operationID
+                            )
                         }
                     }
                 }

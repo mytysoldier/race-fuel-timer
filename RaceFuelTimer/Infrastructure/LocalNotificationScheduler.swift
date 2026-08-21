@@ -16,24 +16,35 @@ final class LocalNotificationScheduler: ObservableObject {
 
     private let center = UNUserNotificationCenter.current()
     private var scheduledNotificationIDs: [String] = []
-    private var schedulingGeneration = UUID()
+    private var activeOperationID = UUID()
 
-    func requestAuthorizationAndSchedule(for session: Session) async {
+    func beginNotificationOperation() -> UUID {
+        let operationID = UUID()
+        activeOperationID = operationID
+        removeScheduledReminders()
+        return operationID
+    }
+
+    func requestAuthorizationAndSchedule(for session: Session, operationID: UUID) async {
         let settings = await center.notificationSettings()
+        guard isActive(operationID) else { return }
 
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
             authorization = .authorized
-            await scheduleReminders(for: session)
+            await scheduleReminders(for: session, operationID: operationID)
         case .notDetermined:
             do {
                 let isGranted = try await center.requestAuthorization(options: [.alert, .sound])
+                guard isActive(operationID) else { return }
                 authorization = isGranted ? .authorized : .denied
                 if isGranted {
-                    await scheduleReminders(for: session)
+                    await scheduleReminders(for: session, operationID: operationID)
                 }
             } catch {
-                authorization = .unavailable
+                if isActive(operationID) {
+                    authorization = .unavailable
+                }
             }
         case .denied:
             authorization = .denied
@@ -42,12 +53,8 @@ final class LocalNotificationScheduler: ObservableObject {
         }
     }
 
-    func scheduleReminders(for session: Session) async {
-        guard authorization == .authorized else { return }
-
-        cancelScheduledReminders()
-        let generation = UUID()
-        schedulingGeneration = generation
+    func scheduleReminders(for session: Session, operationID: UUID) async {
+        guard isActive(operationID), authorization == .authorized else { return }
 
         let now = Date.now
         let elapsedSeconds = session.elapsedSeconds(at: now)
@@ -62,21 +69,21 @@ final class LocalNotificationScheduler: ObservableObject {
                 repeats: false
             )
             let request = UNNotificationRequest(
-                identifier: reminder.identifier,
+                identifier: "\(reminder.identifier)-\(operationID.uuidString)",
                 content: content,
                 trigger: trigger
             )
 
             do {
                 try await center.add(request)
-                if schedulingGeneration == generation {
-                    scheduledNotificationIDs.append(reminder.identifier)
+                if isActive(operationID) {
+                    scheduledNotificationIDs.append(request.identifier)
                 } else {
-                    center.removePendingNotificationRequests(withIdentifiers: [reminder.identifier])
+                    center.removePendingNotificationRequests(withIdentifiers: [request.identifier])
                 }
             } catch {
                 // 予約失敗はタイマーの状態遷移に影響させない。
-                if schedulingGeneration == generation {
+                if isActive(operationID) {
                     authorization = .unavailable
                 }
             }
@@ -84,7 +91,15 @@ final class LocalNotificationScheduler: ObservableObject {
     }
 
     func cancelScheduledReminders() {
-        schedulingGeneration = UUID()
+        activeOperationID = UUID()
+        removeScheduledReminders()
+    }
+
+    private func isActive(_ operationID: UUID) -> Bool {
+        activeOperationID == operationID
+    }
+
+    private func removeScheduledReminders() {
         center.removePendingNotificationRequests(withIdentifiers: scheduledNotificationIDs)
         scheduledNotificationIDs.removeAll()
     }
