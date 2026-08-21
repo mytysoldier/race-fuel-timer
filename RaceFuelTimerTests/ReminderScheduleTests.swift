@@ -260,3 +260,23 @@ func 給水と補給の次回予定をそれぞれ取得する() throws {
     #expect(hydrationReminder?.trigger == .elapsedMinutes(20))
     #expect(fuelReminder?.trigger == .elapsedMinutes(40))
 }
+
+@Test("給水と補給で通知文言を区別する")
+func 給水と補給で通知文言を区別する() throws {
+    // Arrange
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: true, firstReminderMinutes: 40, repeatIntervalMinutes: 40, displayName: "ジェル")
+    )
+    let schedule = try plan.schedule().get()
+
+    // Act
+    let hydrationReminder = schedule[0]
+    let combinedReminder = schedule[1]
+
+    // Assert
+    #expect(hydrationReminder.notificationTitle == "給水の時間です")
+    #expect(hydrationReminder.notificationBody.contains("給水"))
+    #expect(combinedReminder.notificationTitle == "給水・補給の時間です")
+    #expect(combinedReminder.notificationBody.contains("ジェル"))
+}
