@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct RaceFuelTimerApp: App {
+    @UIApplicationDelegateAdaptor(NotificationApplicationDelegate.self) private var applicationDelegate
     @State private var session: Session?
     @StateObject private var notificationScheduler = LocalNotificationScheduler()
 

@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import UIKit
 import UserNotifications
 
 enum LocalNotificationAuthorization: Equatable {
@@ -15,6 +16,7 @@ final class LocalNotificationScheduler: ObservableObject {
 
     private let center = UNUserNotificationCenter.current()
     private var scheduledNotificationIDs: [String] = []
+    private var schedulingGeneration = UUID()
 
     func requestAuthorizationAndSchedule(for session: Session) async {
         let settings = await center.notificationSettings()
@@ -44,6 +46,8 @@ final class LocalNotificationScheduler: ObservableObject {
         guard authorization == .authorized else { return }
 
         cancelScheduledReminders()
+        let generation = UUID()
+        schedulingGeneration = generation
 
         let now = Date.now
         let elapsedSeconds = session.elapsedSeconds(at: now)
@@ -65,15 +69,22 @@ final class LocalNotificationScheduler: ObservableObject {
 
             do {
                 try await center.add(request)
-                scheduledNotificationIDs.append(reminder.identifier)
+                if schedulingGeneration == generation {
+                    scheduledNotificationIDs.append(reminder.identifier)
+                } else {
+                    center.removePendingNotificationRequests(withIdentifiers: [reminder.identifier])
+                }
             } catch {
                 // 予約失敗はタイマーの状態遷移に影響させない。
-                authorization = .unavailable
+                if schedulingGeneration == generation {
+                    authorization = .unavailable
+                }
             }
         }
     }
 
     func cancelScheduledReminders() {
+        schedulingGeneration = UUID()
         center.removePendingNotificationRequests(withIdentifiers: scheduledNotificationIDs)
         scheduledNotificationIDs.removeAll()
     }
@@ -85,6 +96,28 @@ final class LocalNotificationScheduler: ObservableObject {
         // 通常通知の音・振動は、iOSの通知設定、サイレント、Focusに従う。
         content.sound = .default
         return content
+    }
+}
+
+final class NotificationApplicationDelegate: NSObject, UIApplicationDelegate {
+    private let notificationDelegate = ForegroundNotificationDelegate()
+
+    func application(
+        _: UIApplication,
+        didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = notificationDelegate
+        return true
+    }
+}
+
+final class ForegroundNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
+    func userNotificationCenter(
+        _: UNUserNotificationCenter,
+        willPresent _: UNNotification,
+        withCompletionHandler completionHandler: @escaping @Sendable (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .sound])
     }
 }
 
