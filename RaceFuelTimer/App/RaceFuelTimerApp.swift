@@ -3,18 +3,37 @@ import SwiftUI
 @main
 struct RaceFuelTimerApp: App {
     @State private var session: Session?
+    @StateObject private var notificationScheduler = LocalNotificationScheduler()
 
     var body: some Scene {
         WindowGroup {
             NavigationStack {
                 // switch でも分岐できるが、Optional の Binding<Session> を安全に取り出す目的が明確な if let を使う。
                 if let sessionBinding = Binding($session) {
-                    SessionTimerView(session: sessionBinding) {
+                    SessionTimerView(
+                        session: sessionBinding,
+                        notificationAuthorization: notificationScheduler.authorization,
+                        onPause: {
+                            notificationScheduler.cancelScheduledReminders()
+                        },
+                        onResume: { session in
+                            Task {
+                                await notificationScheduler.scheduleReminders(for: session)
+                            }
+                        }
+                    ) { _ in
+                        notificationScheduler.cancelScheduledReminders()
                         session = nil
                     }
                 } else {
-                    ContentView { plan in
-                        session = try? Session(plan: plan)
+                    ContentView { plan, shouldRequestNotificationPermission in
+                        guard let newSession = try? Session(plan: plan) else { return }
+                        session = newSession
+
+                        guard shouldRequestNotificationPermission else { return }
+                        Task {
+                            await notificationScheduler.requestAuthorizationAndSchedule(for: newSession)
+                        }
                     }
                 }
             }

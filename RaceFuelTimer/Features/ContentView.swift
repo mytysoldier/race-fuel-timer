@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ContentView: View {
-    let onStart: (ReminderPlan) -> Void
+    let onStart: (ReminderPlan, Bool) -> Void
 
     @State private var selectedDistance: PlannedDistance = .tenKilometers
     @State private var customDistance = ""
@@ -14,8 +14,10 @@ struct ContentView: View {
     @State private var fuelRepeatInterval = ""
     @State private var fuelDisplayName = ""
     @FocusState private var isEditingNumber: Bool
+    @State private var isNotificationExplanationPresented = false
+    @State private var pendingPlan: ReminderPlan?
 
-    init(onStart: @escaping (ReminderPlan) -> Void = { _ in }) {
+    init(onStart: @escaping (ReminderPlan, Bool) -> Void = { _, _ in }) {
         self.onStart = onStart
     }
 
@@ -140,7 +142,8 @@ struct ContentView: View {
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
                 Button("このプランで開始") {
-                    onStart(plan)
+                    pendingPlan = plan
+                    isNotificationExplanationPresented = true
                 }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
@@ -167,6 +170,16 @@ struct ContentView: View {
                 }
 
                 applyPreset(for: kilometers)
+            }
+            .alert("通知を許可しますか？", isPresented: $isNotificationExplanationPresented) {
+                Button("通知なしで開始", role: .cancel) {
+                    startPendingPlan(requestingNotificationPermission: false)
+                }
+                Button("通知を許可") {
+                    startPendingPlan(requestingNotificationPermission: true)
+                }
+            } message: {
+                Text("給水・補給の予定時刻をローカル通知でお知らせします。音・振動・表示はiPhoneの通知設定、サイレント、集中モードにより届かない場合があります。")
             }
     }
 
@@ -224,6 +237,12 @@ struct ContentView: View {
         fuelFirstReminder = preset.fuel.firstReminderMinutes.map(String.init) ?? ""
         fuelRepeatInterval = preset.fuel.repeatIntervalMinutes.map(String.init) ?? ""
         fuelDisplayName = preset.fuel.displayName
+    }
+
+    private func startPendingPlan(requestingNotificationPermission: Bool) {
+        guard let pendingPlan else { return }
+        self.pendingPlan = nil
+        onStart(pendingPlan, requestingNotificationPermission)
     }
 
 }
