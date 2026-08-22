@@ -374,8 +374,8 @@ func 同時刻の予定は種類の順序に関係なく同じ識別子になる
     #expect(identifiers == ["reminder-40-fuel-hydration", "reminder-40-fuel-hydration"])
 }
 
-@Test("不正な状態遷移と過去時刻ではセッションの経過時間を巻き戻さない")
-func 不正な状態遷移と過去時刻ではセッションの経過時間を巻き戻さない() throws {
+@Test("過去時刻での再開は一時停止を維持して経過時間を巻き戻さない")
+func 過去時刻での再開は一時停止を維持して経過時間を巻き戻さない() throws {
     // Arrange
     let startedAt = Date(timeIntervalSinceReferenceDate: 1_000)
     let plan = ReminderPlan(
@@ -388,10 +388,10 @@ func 不正な状態遷移と過去時刻ではセッションの経過時間を
     session.resume(at: startedAt.addingTimeInterval(10 * 60))
     session.pause(at: startedAt.addingTimeInterval(10 * 60))
     session.resume(at: startedAt.addingTimeInterval(5 * 60))
-    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(30 * 60))
+    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(5 * 60))
 
     // Assert
-    #expect(session.state == .running)
-    #expect(elapsedMinutes == 30)
+    #expect(session.state == .paused)
+    #expect(elapsedMinutes == 10)
     #expect(session.totalPausedSeconds == 0)
 }

@@ -229,9 +229,9 @@ struct Session: Equatable {
     }
 
     mutating func resume(at date: Date) {
-        guard state == .paused, let pausedAt else { return }
+        guard state == .paused, let pausedAt, date >= pausedAt else { return }
 
-        totalPausedSeconds += max(0, date.timeIntervalSince(pausedAt))
+        totalPausedSeconds += date.timeIntervalSince(pausedAt)
         self.pausedAt = nil
         state = .running
     }
