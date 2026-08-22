@@ -24,6 +24,8 @@ struct SavedPlan: Equatable {
         guard version == Self.currentVersion,
               selectedDistanceKilometers.isFinite,
               (0.1...200).contains(selectedDistanceKilometers),
+              Self.isValidStoredSetting(hydration),
+              Self.isValidStoredSetting(fuel),
               ReminderPlan(hydration: hydration, fuel: fuel).validationErrors().isEmpty
         else {
             return nil
@@ -33,6 +35,16 @@ struct SavedPlan: Equatable {
         self.selectedDistanceKilometers = selectedDistanceKilometers
         self.hydration = hydration
         self.fuel = fuel
+    }
+
+    private static func isValidStoredSetting(_ setting: ReminderSetting) -> Bool {
+        let hasValidFirstReminder = setting.firstReminderMinutes.map(ReminderPlan.allowedReminderMinutes.contains) ?? true
+        let hasValidRepeatInterval = setting.repeatIntervalMinutes.map(ReminderPlan.allowedReminderMinutes.contains) ?? true
+        let displayNameLength = setting.displayName
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .count
+
+        return hasValidFirstReminder && hasValidRepeatInterval && displayNameLength <= 30
     }
 }
 

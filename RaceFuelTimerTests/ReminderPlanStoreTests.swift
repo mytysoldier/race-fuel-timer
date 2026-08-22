@@ -57,6 +57,27 @@ func 範囲外の保存設定は初期設定へフォールバックする() {
     #expect(restoredPlan == .default)
 }
 
+@Test("無効な通知に残った範囲外の保存設定は初期設定へフォールバックする")
+func 無効な通知に残った範囲外の保存設定は初期設定へフォールバックする() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set(
+        Data(
+            """
+            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":20,"repeatIntervalMinutes":20,"displayName":""},"fuel":{"isEnabled":false,"firstReminderMinutes":0,"repeatIntervalMinutes":999,"displayName":""}}
+            """.utf8
+        ),
+        forKey: ReminderPlanStore.storageKey
+    )
+
+    // Act
+    let restoredPlan = store.load()
+
+    // Assert
+    #expect(restoredPlan == .default)
+}
+
 @Test("旧バージョンの保存設定は初期設定へフォールバックする")
 func 旧バージョンの保存設定は初期設定へフォールバックする() {
     // Arrange
