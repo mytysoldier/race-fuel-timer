@@ -51,6 +51,22 @@ func 破損したJSONからの復旧を画面へ通知できる() {
     #expect(loadResult.didRecover)
 }
 
+@Test("Data以外の保存値からの復旧を画面へ通知できる")
+func Data以外の保存値からの復旧を画面へ通知できる() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set("legacy-format", forKey: ReminderPlanStore.storageKey)
+
+    // Act
+    let loadResult = store.loadWithRecoveryStatus()
+
+    // Assert
+    #expect(loadResult.plan == .default)
+    #expect(loadResult.didRecover)
+    #expect(defaults.object(forKey: ReminderPlanStore.storageKey) == nil)
+}
+
 @Test("保存設定がない初回起動では復旧案内を表示しない")
 func 保存設定がない初回起動では復旧案内を表示しない() {
     // Arrange

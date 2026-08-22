@@ -64,11 +64,12 @@ struct ReminderPlanStore {
     }
 
     func loadWithRecoveryStatus() -> SavedPlanLoadResult {
-        guard let data = defaults.data(forKey: storageKey) else {
+        guard let storedValue = defaults.object(forKey: storageKey) else {
             return .init(plan: .default, didRecover: false)
         }
 
-        guard let payload = try? JSONDecoder().decode(SavedPlanPayload.self, from: data),
+        guard let data = storedValue as? Data,
+              let payload = try? JSONDecoder().decode(SavedPlanPayload.self, from: data),
               let savedPlan = payload.savedPlan
         else {
             defaults.removeObject(forKey: storageKey)
