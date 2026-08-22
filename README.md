@@ -59,3 +59,4 @@ make build
 - [技術アーキテクチャ](docs/architecture.md)
 - [補給・給水通知の調査](docs/research/fueling-hydration-notification-guidelines.md)
 - [iOS通知・バックグラウンドSpike](docs/background-notification-spike.md)
+- [iOS回帰チェックリスト](docs/ios-regression-checklist.md)
