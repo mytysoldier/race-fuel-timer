@@ -1,19 +1,39 @@
 import SwiftUI
 
+private struct EditablePlan: Equatable {
+    var selectedDistance: PlannedDistance
+    var customDistance: String
+    var hydrationIsEnabled: Bool
+    var hydrationFirstReminder: String
+    var hydrationRepeatInterval: String
+    var hydrationDisplayName: String
+    var fuelIsEnabled: Bool
+    var fuelFirstReminder: String
+    var fuelRepeatInterval: String
+    var fuelDisplayName: String
+
+    init(savedPlan: SavedPlan) {
+        let distance = PlannedDistance.from(savedDistanceKilometers: savedPlan.selectedDistanceKilometers)
+        selectedDistance = distance
+        customDistance = distance == .custom
+            ? DistanceParser.text(from: savedPlan.selectedDistanceKilometers)
+            : ""
+        hydrationIsEnabled = savedPlan.hydration.isEnabled
+        hydrationFirstReminder = savedPlan.hydration.firstReminderMinutes.map(String.init) ?? ""
+        hydrationRepeatInterval = savedPlan.hydration.repeatIntervalMinutes.map(String.init) ?? ""
+        hydrationDisplayName = savedPlan.hydration.displayName
+        fuelIsEnabled = savedPlan.fuel.isEnabled
+        fuelFirstReminder = savedPlan.fuel.firstReminderMinutes.map(String.init) ?? ""
+        fuelRepeatInterval = savedPlan.fuel.repeatIntervalMinutes.map(String.init) ?? ""
+        fuelDisplayName = savedPlan.fuel.displayName
+    }
+}
+
 struct ContentView: View {
     let onStart: (ReminderPlan, Bool) -> Void
     private let planStore: ReminderPlanStore
 
-    @State private var selectedDistance: PlannedDistance
-    @State private var customDistance: String
-    @State private var hydrationIsEnabled: Bool
-    @State private var hydrationFirstReminder: String
-    @State private var hydrationRepeatInterval: String
-    @State private var hydrationDisplayName: String
-    @State private var fuelIsEnabled: Bool
-    @State private var fuelFirstReminder: String
-    @State private var fuelRepeatInterval: String
-    @State private var fuelDisplayName: String
+    @State private var editablePlan: EditablePlan
     @FocusState private var isEditingNumber: Bool
     @State private var isNotificationExplanationPresented = false
     @State private var isResetConfirmationPresented = false
@@ -26,26 +46,15 @@ struct ContentView: View {
         self.onStart = onStart
         self.planStore = planStore
 
-        let savedPlan = planStore.load()
-        let distance = PlannedDistance.from(savedDistanceKilometers: savedPlan.selectedDistanceKilometers)
-        _selectedDistance = State(initialValue: distance)
-        _customDistance = State(initialValue: distance == .custom ? String(savedPlan.selectedDistanceKilometers) : "")
-        _hydrationIsEnabled = State(initialValue: savedPlan.hydration.isEnabled)
-        _hydrationFirstReminder = State(initialValue: savedPlan.hydration.firstReminderMinutes.map(String.init) ?? "")
-        _hydrationRepeatInterval = State(initialValue: savedPlan.hydration.repeatIntervalMinutes.map(String.init) ?? "")
-        _hydrationDisplayName = State(initialValue: savedPlan.hydration.displayName)
-        _fuelIsEnabled = State(initialValue: savedPlan.fuel.isEnabled)
-        _fuelFirstReminder = State(initialValue: savedPlan.fuel.firstReminderMinutes.map(String.init) ?? "")
-        _fuelRepeatInterval = State(initialValue: savedPlan.fuel.repeatIntervalMinutes.map(String.init) ?? "")
-        _fuelDisplayName = State(initialValue: savedPlan.fuel.displayName)
+        _editablePlan = State(initialValue: .init(savedPlan: planStore.load()))
     }
 
     private var selectedDistanceKilometers: Double? {
-        selectedDistance.kilometers ?? DistanceParser.kilometers(from: customDistance)
+        editablePlan.selectedDistance.kilometers ?? DistanceParser.kilometers(from: editablePlan.customDistance)
     }
 
     private var validCustomDistanceKilometers: Double? {
-        guard let kilometers = DistanceParser.kilometers(from: customDistance),
+        guard let kilometers = DistanceParser.kilometers(from: editablePlan.customDistance),
               (0.1...200).contains(kilometers)
         else {
             return nil
@@ -57,16 +66,16 @@ struct ContentView: View {
     private var plan: ReminderPlan {
         ReminderPlan(
             hydration: setting(
-                isEnabled: hydrationIsEnabled,
-                firstReminder: hydrationFirstReminder,
-                repeatInterval: hydrationRepeatInterval,
-                displayName: hydrationDisplayName
+                isEnabled: editablePlan.hydrationIsEnabled,
+                firstReminder: editablePlan.hydrationFirstReminder,
+                repeatInterval: editablePlan.hydrationRepeatInterval,
+                displayName: editablePlan.hydrationDisplayName
             ),
             fuel: setting(
-                isEnabled: fuelIsEnabled,
-                firstReminder: fuelFirstReminder,
-                repeatInterval: fuelRepeatInterval,
-                displayName: fuelDisplayName
+                isEnabled: editablePlan.fuelIsEnabled,
+                firstReminder: editablePlan.fuelFirstReminder,
+                repeatInterval: editablePlan.fuelRepeatInterval,
+                displayName: editablePlan.fuelDisplayName
             )
         )
     }
@@ -74,11 +83,11 @@ struct ContentView: View {
     private var validationMessages: [String] {
         var messages: [String] = []
 
-        if selectedDistance == .custom,
+        if editablePlan.selectedDistance == .custom,
            let kilometers = selectedDistanceKilometers,
            !(0.1...200).contains(kilometers) {
             messages.append("カスタム距離は 0.1〜200 km で入力してください。")
-        } else if selectedDistance == .custom, selectedDistanceKilometers == nil {
+        } else if editablePlan.selectedDistance == .custom, selectedDistanceKilometers == nil {
             messages.append("カスタム距離を数値で入力してください。")
         }
 
@@ -113,7 +122,7 @@ struct ContentView: View {
 
                     GroupBox("予定距離") {
                         VStack(alignment: .leading, spacing: 12) {
-                            Picker("予定距離", selection: $selectedDistance) {
+                            Picker("予定距離", selection: $editablePlan.selectedDistance) {
                                 ForEach(PlannedDistance.allCases) { distance in
                                     Text(distance.title).tag(distance)
                                 }
@@ -121,8 +130,8 @@ struct ContentView: View {
                             .pickerStyle(.menu)
                             .accessibilityHint("距離に合わせて通知の初期設定を選びます")
 
-                            if selectedDistance == .custom {
-                                TextField("距離（km）", text: $customDistance)
+                            if editablePlan.selectedDistance == .custom {
+                                TextField("距離（km）", text: $editablePlan.customDistance)
                                     .keyboardType(.decimalPad)
                                     .textFieldStyle(.roundedBorder)
                                     .focused($isEditingNumber)
@@ -133,18 +142,18 @@ struct ContentView: View {
 
                     reminderSection(
                         title: "給水",
-                        isEnabled: $hydrationIsEnabled,
-                        firstReminder: $hydrationFirstReminder,
-                        repeatInterval: $hydrationRepeatInterval,
-                        displayName: $hydrationDisplayName
+                        isEnabled: $editablePlan.hydrationIsEnabled,
+                        firstReminder: $editablePlan.hydrationFirstReminder,
+                        repeatInterval: $editablePlan.hydrationRepeatInterval,
+                        displayName: $editablePlan.hydrationDisplayName
                     )
 
                     reminderSection(
                         title: "補給・ジェル",
-                        isEnabled: $fuelIsEnabled,
-                        firstReminder: $fuelFirstReminder,
-                        repeatInterval: $fuelRepeatInterval,
-                        displayName: $fuelDisplayName
+                        isEnabled: $editablePlan.fuelIsEnabled,
+                        firstReminder: $editablePlan.fuelFirstReminder,
+                        repeatInterval: $editablePlan.fuelRepeatInterval,
+                        displayName: $editablePlan.fuelDisplayName
                     )
 
                     Button("設定を初期化", role: .destructive) {
@@ -189,11 +198,11 @@ struct ContentView: View {
                     Button("完了") { isEditingNumber = false }
                 }
             }
-            .onChange(of: selectedDistance) { _, distance in
+            .onChange(of: editablePlan.selectedDistance) { _, distance in
                 applyPreset(for: distance == .custom ? validCustomDistanceKilometers : distance.kilometers)
             }
-            .onChange(of: customDistance) { _, distance in
-                guard selectedDistance == .custom,
+            .onChange(of: editablePlan.customDistance) { _, distance in
+                guard editablePlan.selectedDistance == .custom,
                       let kilometers = DistanceParser.kilometers(from: distance),
                       (0.1...200).contains(kilometers)
                 else {
@@ -272,28 +281,18 @@ struct ContentView: View {
 
     private func applyPreset(for kilometers: Double?) {
         let preset = ReminderPlanPreset.make(for: kilometers)
-        hydrationIsEnabled = preset.hydration.isEnabled
-        hydrationFirstReminder = preset.hydration.firstReminderMinutes.map(String.init) ?? ""
-        hydrationRepeatInterval = preset.hydration.repeatIntervalMinutes.map(String.init) ?? ""
-        hydrationDisplayName = preset.hydration.displayName
-        fuelIsEnabled = preset.fuel.isEnabled
-        fuelFirstReminder = preset.fuel.firstReminderMinutes.map(String.init) ?? ""
-        fuelRepeatInterval = preset.fuel.repeatIntervalMinutes.map(String.init) ?? ""
-        fuelDisplayName = preset.fuel.displayName
+        editablePlan.hydrationIsEnabled = preset.hydration.isEnabled
+        editablePlan.hydrationFirstReminder = preset.hydration.firstReminderMinutes.map(String.init) ?? ""
+        editablePlan.hydrationRepeatInterval = preset.hydration.repeatIntervalMinutes.map(String.init) ?? ""
+        editablePlan.hydrationDisplayName = preset.hydration.displayName
+        editablePlan.fuelIsEnabled = preset.fuel.isEnabled
+        editablePlan.fuelFirstReminder = preset.fuel.firstReminderMinutes.map(String.init) ?? ""
+        editablePlan.fuelRepeatInterval = preset.fuel.repeatIntervalMinutes.map(String.init) ?? ""
+        editablePlan.fuelDisplayName = preset.fuel.displayName
     }
 
     private func apply(savedPlan: SavedPlan) {
-        let distance = PlannedDistance.from(savedDistanceKilometers: savedPlan.selectedDistanceKilometers)
-        selectedDistance = distance
-        customDistance = distance == .custom ? String(savedPlan.selectedDistanceKilometers) : ""
-        hydrationIsEnabled = savedPlan.hydration.isEnabled
-        hydrationFirstReminder = savedPlan.hydration.firstReminderMinutes.map(String.init) ?? ""
-        hydrationRepeatInterval = savedPlan.hydration.repeatIntervalMinutes.map(String.init) ?? ""
-        hydrationDisplayName = savedPlan.hydration.displayName
-        fuelIsEnabled = savedPlan.fuel.isEnabled
-        fuelFirstReminder = savedPlan.fuel.firstReminderMinutes.map(String.init) ?? ""
-        fuelRepeatInterval = savedPlan.fuel.repeatIntervalMinutes.map(String.init) ?? ""
-        fuelDisplayName = savedPlan.fuel.displayName
+        editablePlan = .init(savedPlan: savedPlan)
     }
 
     private func startPendingPlan(requestingNotificationPermission: Bool) {
