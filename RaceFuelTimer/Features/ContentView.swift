@@ -133,7 +133,11 @@ struct ContentView: View {
                             .font(.largeTitle.bold())
                         Text("走り出す前に、通知の計画を確認しましょう。")
                             .foregroundStyle(.secondary)
+                        Text("通知を使わなくても、画面上の経過時間と次の予定は確認できます。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
+                    .accessibilityElement(children: .combine)
 
                     GroupBox("予定距離") {
                         VStack(alignment: .leading, spacing: 12) {
@@ -151,6 +155,7 @@ struct ContentView: View {
                                     .textFieldStyle(.roundedBorder)
                                     .focused($isEditingNumber)
                                     .accessibilityLabel("カスタム距離（km）")
+                                    .accessibilityHint("0.1〜200 kmの範囲で入力します")
                             }
                         }
                     }
@@ -175,7 +180,7 @@ struct ContentView: View {
 
                     if didRecoverSavedPlan {
                         Label(
-                            "保存した設定を安全な初期値へ戻しました。必要に応じて設定を確認してください。",
+                            "保存した設定を安全な初期値へ戻しました。予定距離と通知設定を確認してから開始してください。",
                             systemImage: "exclamationmark.triangle.fill"
                         )
                         .foregroundStyle(.orange)
@@ -188,7 +193,7 @@ struct ContentView: View {
 
                     if !validationMessages.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("開始前に修正してください")
+                            Text("開始前に設定を確認してください")
                                 .font(.headline)
                             ForEach(validationMessages, id: \.self) { message in
                                 Label(message, systemImage: "exclamationmark.circle.fill")
@@ -196,7 +201,8 @@ struct ContentView: View {
                         }
                         .foregroundStyle(.red)
                         .accessibilityElement(children: .combine)
-                        .accessibilityLabel("入力エラー。\(validationMessages.joined(separator: "、"))")
+                        .accessibilityLabel("開始できない設定があります。\(validationMessages.joined(separator: "、"))")
+                        .accessibilityHint("表示された内容を修正すると開始できます")
                     }
 
                     Text("通知は補給量を指示するものではありません。体調や製品表示を優先してください。")
@@ -216,7 +222,7 @@ struct ContentView: View {
                 .padding()
                 .background(.bar)
                 .disabled(!canStart)
-                .accessibilityHint(canStart ? "有効な通知プランです" : "入力エラーを修正すると開始できます")
+                .accessibilityHint(canStart ? "通知を許可するか、通知なしで開始するかを選びます" : "表示された設定を修正すると開始できます")
             }
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -250,7 +256,7 @@ struct ContentView: View {
             } message: {
                 Text("保存した距離と給水・補給の設定を初期値へ戻します。")
             }
-            .alert("通知を許可しますか？", isPresented: $isNotificationExplanationPresented) {
+            .alert("通知を使って開始しますか？", isPresented: $isNotificationExplanationPresented) {
                 Button("通知なしで開始", role: .cancel) {
                     startPendingPlan(requestingNotificationPermission: false)
                 }
@@ -258,7 +264,7 @@ struct ContentView: View {
                     startPendingPlan(requestingNotificationPermission: true)
                 }
             } message: {
-                Text("給水・補給の予定時刻をローカル通知でお知らせします。音・振動・表示はiPhoneの通知設定、サイレント、集中モードにより届かない場合があります。")
+                Text("給水・補給の予定時刻をローカル通知でお知らせします。許可しなくても画面上のタイマーは使えます。音・振動・表示はiPhoneの通知設定、サイレント、集中モードにより届かない場合があります。")
             }
     }
 
@@ -273,6 +279,7 @@ struct ContentView: View {
         GroupBox(title) {
             VStack(alignment: .leading, spacing: 12) {
                 Toggle("\(title)を通知する", isOn: isEnabled)
+                    .accessibilityHint("オフにすると、この通知の時刻と表示名を初期化します")
                     .onChange(of: isEnabled.wrappedValue) { _, isEnabled in
                         guard !isEnabled else { return }
                         onDisabled()
@@ -283,12 +290,18 @@ struct ContentView: View {
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
                         .focused($isEditingNumber)
+                        .accessibilityLabel("\(title)の最初の通知（分）")
+                        .accessibilityHint("5〜240分の整数で入力します")
                     TextField("繰り返し間隔（分）", text: repeatInterval)
                         .keyboardType(.numberPad)
                         .textFieldStyle(.roundedBorder)
                         .focused($isEditingNumber)
+                        .accessibilityLabel("\(title)の繰り返し間隔（分）")
+                        .accessibilityHint("5〜240分の整数で入力します")
                     TextField("通知表示名（任意）", text: displayName)
                         .textFieldStyle(.roundedBorder)
+                        .accessibilityLabel("\(title)の通知表示名（任意）")
+                        .accessibilityHint("30文字以内で入力します")
                     Text("最初の通知と間隔は 5〜240 分の整数です。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
