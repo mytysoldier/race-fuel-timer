@@ -387,10 +387,11 @@ func 過去時刻での再開は一時停止を維持して経過時間を巻き
     // Act
     session.resume(at: startedAt.addingTimeInterval(10 * 60))
     session.pause(at: startedAt.addingTimeInterval(10 * 60))
-    session.resume(at: startedAt.addingTimeInterval(5 * 60))
+    let didResume = session.resume(at: startedAt.addingTimeInterval(5 * 60))
     let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(5 * 60))
 
     // Assert
+    #expect(!didResume)
     #expect(session.state == .paused)
     #expect(elapsedMinutes == 10)
     #expect(session.totalPausedSeconds == 0)

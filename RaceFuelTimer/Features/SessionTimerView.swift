@@ -46,8 +46,9 @@ struct SessionTimerView: View {
 
                     Button(session.state == .paused ? "再開" : "一時停止") {
                         if session.state == .paused {
-                            session.resume(at: .now)
-                            onResume(session)
+                            if session.resume(at: .now) {
+                                onResume(session)
+                            }
                         } else {
                             session.pause(at: .now)
                             onPause()
