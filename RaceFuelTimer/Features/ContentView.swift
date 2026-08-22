@@ -50,7 +50,10 @@ struct ContentView: View {
     @State private var didRecoverSavedPlan: Bool
     @State private var isNotificationExplanationPresented = false
     @State private var isResetConfirmationPresented = false
+    @State private var isSafetyInformationPresented = false
+    @State private var isPrivacyInformationPresented = false
     @State private var pendingPlan: ReminderPlan?
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     init(
         onStart: @escaping (ReminderPlan, Bool) -> Void = { _, _ in },
@@ -205,7 +208,7 @@ struct ContentView: View {
                         .accessibilityHint("表示された内容を修正すると開始できます")
                     }
 
-                    Text("通知は補給量を指示するものではありません。体調や製品表示を優先してください。")
+                    Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -225,6 +228,16 @@ struct ContentView: View {
                 .accessibilityHint(canStart ? "通知を許可するか、通知なしで開始するかを選びます" : "表示された設定を修正すると開始できます")
             }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("情報", systemImage: "info.circle") {
+                        Button("安全上の注意") {
+                            isSafetyInformationPresented = true
+                        }
+                        Button("プライバシーとサポート") {
+                            isPrivacyInformationPresented = true
+                        }
+                    }
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("完了") { isEditingNumber = false }
@@ -247,6 +260,9 @@ struct ContentView: View {
                 guard let savedPlan else { return }
                 planStore.save(savedPlan)
             }
+            .onAppear {
+                isSafetyInformationPresented = !hasCompletedOnboarding
+            }
             .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
                 Button("初期化", role: .destructive) {
                     planStore.reset()
@@ -264,7 +280,19 @@ struct ContentView: View {
                     startPendingPlan(requestingNotificationPermission: true)
                 }
             } message: {
-                Text("給水・補給の予定時刻をローカル通知でお知らせします。許可しなくても画面上のタイマーは使えます。音・振動・表示はiPhoneの通知設定、サイレント、集中モードにより届かない場合があります。")
+                Text("給水・補給の予定時刻をローカル通知でお知らせします。許可しなくても画面上のタイマーは使えます。通知はiPhoneの通知設定、サイレントモード、集中モード、端末やOSの状態により遅延・不達となる場合があります。")
+            }
+            .sheet(isPresented: $isSafetyInformationPresented) {
+                SafetyInformationView(
+                    isOnboarding: !hasCompletedOnboarding,
+                    onCompleteOnboarding: {
+                        hasCompletedOnboarding = true
+                        isSafetyInformationPresented = false
+                    }
+                )
+            }
+            .sheet(isPresented: $isPrivacyInformationPresented) {
+                PrivacyInformationView()
             }
     }
 
@@ -350,4 +378,71 @@ struct ContentView: View {
         onStart(pendingPlan, requestingNotificationPermission)
     }
 
+}
+
+private struct SafetyInformationView: View {
+    let isOnboarding: Bool
+    let onCompleteOnboarding: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if isOnboarding {
+                    Section("ランニング補給タイマーへようこそ") {
+                        Text("走行前に給水・補給の予定を設定し、経過時間と次の予定を確認するためのアプリです。")
+                        Text("使い方：距離と予定を確認して「このプランで開始」を押します。通知を許可しなくても、画面上のタイマーは利用できます。")
+                    }
+                }
+
+                Section("安全上の注意") {
+                    Text("通知は目安であり、補給量や医療・栄養上の判断を指示するものではありません。体調、製品表示、専門家の助言を優先してください。")
+                    Text("痛み、めまい、吐き気など体調不良を感じた場合は、運動を中止して必要に応じて医療機関へ相談してください。")
+                }
+
+                Section("通知について") {
+                    Text("通知は給水・補給の予定時刻を知らせる目的でのみ使います。許可しない場合もタイマーと画面上の次回予定は利用できます。")
+                    Text("通知の音・振動・表示は、iPhoneの通知設定、サイレントモード、集中モード、端末やOSの状態により遅延・不達となる場合があります。走行中は通知だけに頼らず、安全を最優先してください。")
+                }
+            }
+            .navigationTitle(isOnboarding ? "はじめに" : "安全上の注意")
+            .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                if isOnboarding {
+                    Button("内容を確認して始める", action: onCompleteOnboarding)
+                        .buttonStyle(.borderedProminent)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.bar)
+                }
+            }
+        }
+        .interactiveDismissDisabled(isOnboarding)
+    }
+}
+
+private struct PrivacyInformationView: View {
+    var body: some View {
+        NavigationStack {
+            List {
+                Section("プライバシー") {
+                    Text("このアプリは、設定した距離、給水・補給の通知設定をこの端末内にのみ保存します。")
+                    Text("位置情報、連絡先、健康データなどは取得しません。データを外部サーバーへ送信・共有・販売することもありません。")
+                }
+
+                Section("権限") {
+                    Text("通知権限は、給水・補給の予定時刻をローカル通知で知らせるためにのみ使用します。位置情報の権限は要求しません。")
+                }
+
+                Section("サポート") {
+                    Link("GitHub Issuesで問い合わせる", destination: URL(string: "https://github.com/mytysoldier/race-fuel-timer/issues")!)
+                }
+
+                Section("ライセンス") {
+                    Text("このアプリは外部ライブラリを使用していません。")
+                }
+            }
+            .navigationTitle("プライバシーとサポート")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
 }
