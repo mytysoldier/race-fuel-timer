@@ -279,7 +279,11 @@ struct ContentView: View {
         GroupBox(title) {
             VStack(alignment: .leading, spacing: 12) {
                 Toggle("\(title)を通知する", isOn: isEnabled)
-                    .accessibilityHint("オフにすると、この通知の時刻と表示名を初期化します")
+                    .accessibilityHint(
+                        isEnabled.wrappedValue
+                            ? "オフにすると、この通知の時刻と表示名を初期化します"
+                            : "オンにすると、この通知の時刻と表示名を入力できます"
+                    )
                     .onChange(of: isEnabled.wrappedValue) { _, isEnabled in
                         guard !isEnabled else { return }
                         onDisabled()
