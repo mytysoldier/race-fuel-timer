@@ -1,7 +1,7 @@
 PROJECT := RaceFuelTimer.xcodeproj
 SCHEME := RaceFuelTimer
 DESTINATION := generic/platform=iOS Simulator
-TEST_DESTINATION := platform=iOS Simulator,name=iPhone 16,OS=18.3.1
+TEST_DESTINATION ?= platform=iOS Simulator,name=iPhone 16,OS=18.3.1
 DERIVED_DATA := build/DerivedData
 
 .PHONY: lint typecheck test build
