@@ -1,6 +1,6 @@
 import SwiftUI
 
-private struct EditablePlan: Equatable {
+struct EditablePlan: Equatable {
     var selectedDistance: PlannedDistance
     var customDistance: String
     var hydrationIsEnabled: Bool
@@ -26,6 +26,18 @@ private struct EditablePlan: Equatable {
         fuelFirstReminder = savedPlan.fuel.firstReminderMinutes.map(String.init) ?? ""
         fuelRepeatInterval = savedPlan.fuel.repeatIntervalMinutes.map(String.init) ?? ""
         fuelDisplayName = savedPlan.fuel.displayName
+    }
+
+    mutating func clearHydrationReminderInputs() {
+        hydrationFirstReminder = ""
+        hydrationRepeatInterval = ""
+        hydrationDisplayName = ""
+    }
+
+    mutating func clearFuelReminderInputs() {
+        fuelFirstReminder = ""
+        fuelRepeatInterval = ""
+        fuelDisplayName = ""
     }
 }
 
@@ -148,7 +160,8 @@ struct ContentView: View {
                         isEnabled: $editablePlan.hydrationIsEnabled,
                         firstReminder: $editablePlan.hydrationFirstReminder,
                         repeatInterval: $editablePlan.hydrationRepeatInterval,
-                        displayName: $editablePlan.hydrationDisplayName
+                        displayName: $editablePlan.hydrationDisplayName,
+                        onDisabled: { editablePlan.clearHydrationReminderInputs() }
                     )
 
                     reminderSection(
@@ -156,7 +169,8 @@ struct ContentView: View {
                         isEnabled: $editablePlan.fuelIsEnabled,
                         firstReminder: $editablePlan.fuelFirstReminder,
                         repeatInterval: $editablePlan.fuelRepeatInterval,
-                        displayName: $editablePlan.fuelDisplayName
+                        displayName: $editablePlan.fuelDisplayName,
+                        onDisabled: { editablePlan.clearFuelReminderInputs() }
                     )
 
                     if didRecoverSavedPlan {
@@ -253,11 +267,16 @@ struct ContentView: View {
         isEnabled: Binding<Bool>,
         firstReminder: Binding<String>,
         repeatInterval: Binding<String>,
-        displayName: Binding<String>
+        displayName: Binding<String>,
+        onDisabled: @escaping () -> Void
     ) -> some View {
         GroupBox(title) {
             VStack(alignment: .leading, spacing: 12) {
                 Toggle("\(title)を通知する", isOn: isEnabled)
+                    .onChange(of: isEnabled.wrappedValue) { _, isEnabled in
+                        guard !isEnabled else { return }
+                        onDisabled()
+                    }
 
                 if isEnabled.wrappedValue {
                     TextField("最初の通知（分）", text: firstReminder)

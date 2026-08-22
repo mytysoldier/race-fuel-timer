@@ -123,6 +123,24 @@ func 無効な通知に残った範囲外の保存設定は初期設定へフォ
     #expect(restoredPlan == .default)
 }
 
+@Test("通知を無効にすると入力済みの値を初期化する")
+func 通知を無効にすると入力済みの値を初期化する() {
+    // Arrange
+    var editablePlan = EditablePlan(savedPlan: .default)
+    editablePlan.fuelIsEnabled = false
+    editablePlan.fuelFirstReminder = "0"
+    editablePlan.fuelRepeatInterval = "999"
+    editablePlan.fuelDisplayName = "長い表示名"
+
+    // Act
+    editablePlan.clearFuelReminderInputs()
+
+    // Assert
+    #expect(editablePlan.fuelFirstReminder.isEmpty)
+    #expect(editablePlan.fuelRepeatInterval.isEmpty)
+    #expect(editablePlan.fuelDisplayName.isEmpty)
+}
+
 @Test("旧バージョンの保存設定は初期設定へフォールバックする")
 func 旧バージョンの保存設定は初期設定へフォールバックする() {
     // Arrange
