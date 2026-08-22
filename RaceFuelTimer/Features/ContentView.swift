@@ -50,7 +50,10 @@ struct ContentView: View {
     @State private var didRecoverSavedPlan: Bool
     @State private var isNotificationExplanationPresented = false
     @State private var isResetConfirmationPresented = false
+    @State private var isSafetyInformationPresented = false
+    @State private var isPrivacyInformationPresented = false
     @State private var pendingPlan: ReminderPlan?
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     init(
         onStart: @escaping (ReminderPlan, Bool) -> Void = { _, _ in },
@@ -205,7 +208,7 @@ struct ContentView: View {
                         .accessibilityHint("表示された内容を修正すると開始できます")
                     }
 
-                    Text("通知は補給量を指示するものではありません。体調や製品表示を優先してください。")
+                    Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -225,6 +228,16 @@ struct ContentView: View {
                 .accessibilityHint(canStart ? "通知を許可するか、通知なしで開始するかを選びます" : "表示された設定を修正すると開始できます")
             }
             .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu("情報", systemImage: "info.circle") {
+                        Button("安全上の注意") {
+                            isSafetyInformationPresented = true
+                        }
+                        Button("プライバシーとサポート") {
+                            isPrivacyInformationPresented = true
+                        }
+                    }
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("完了") { isEditingNumber = false }
@@ -247,6 +260,9 @@ struct ContentView: View {
                 guard let savedPlan else { return }
                 planStore.save(savedPlan)
             }
+            .onAppear {
+                isSafetyInformationPresented = !hasCompletedOnboarding
+            }
             .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
                 Button("初期化", role: .destructive) {
                     planStore.reset()
@@ -264,7 +280,19 @@ struct ContentView: View {
                     startPendingPlan(requestingNotificationPermission: true)
                 }
             } message: {
-                Text("給水・補給の予定時刻をローカル通知でお知らせします。許可しなくても画面上のタイマーは使えます。音・振動・表示はiPhoneの通知設定、サイレント、集中モードにより届かない場合があります。")
+                Text("給水・補給の予定時刻をローカル通知でお知らせします。許可しなくても画面上のタイマーは使えます。通知はiPhoneの通知設定、サイレントモード、集中モード、端末やOSの状態により遅延・不達となる場合があります。")
+            }
+            .sheet(isPresented: $isSafetyInformationPresented) {
+                SafetyInformationView(
+                    isOnboarding: !hasCompletedOnboarding,
+                    onCompleteOnboarding: {
+                        hasCompletedOnboarding = true
+                        isSafetyInformationPresented = false
+                    }
+                )
+            }
+            .sheet(isPresented: $isPrivacyInformationPresented) {
+                PrivacyInformationView()
             }
     }
 
