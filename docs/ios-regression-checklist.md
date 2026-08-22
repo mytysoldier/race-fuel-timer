@@ -2,6 +2,8 @@
 
 Issue #14 の公開前チェックです。自動テストで検証できない iOS 固有の挙動を、iOS 17 以上の iPhone Simulator と実機で確認します。実機では通知を許可した状態と拒否した状態をそれぞれ確認します。
 
+Issue #16 のTestFlight・実走QAでは、このチェックリストに加えて [iOSベータQA記録](ios-beta-qa-record.md) の対象端末、通知結果、電池・発熱、残存リスクを記録します。MVPは時間ベースのローカル通知のみで、GPS距離計測は対象外です。
+
 ## 実行前
 
 - [ ] `make lint typecheck test build` が成功する
