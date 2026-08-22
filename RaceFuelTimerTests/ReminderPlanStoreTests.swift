@@ -162,6 +162,29 @@ func 旧バージョンの保存設定は初期設定へフォールバックす
     #expect(restoredPlan == .default)
 }
 
+@Test("対応していない保存バージョンは削除して初期設定へ復旧する")
+func 対応していない保存バージョンは削除して初期設定へ復旧する() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set(
+        Data(
+            """
+            {"version":2,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":20,"repeatIntervalMinutes":20,"displayName":""},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
+            """.utf8
+        ),
+        forKey: ReminderPlanStore.storageKey
+    )
+
+    // Act
+    let loadResult = store.loadWithRecoveryStatus()
+
+    // Assert
+    #expect(loadResult.plan == .default)
+    #expect(loadResult.didRecover)
+    #expect(defaults.object(forKey: ReminderPlanStore.storageKey) == nil)
+}
+
 @Test("初期化すると保存設定を削除して初期設定を返す")
 func 初期化すると保存設定を削除して初期設定を返す() {
     // Arrange

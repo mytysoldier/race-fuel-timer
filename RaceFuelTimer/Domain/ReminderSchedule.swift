@@ -228,12 +228,14 @@ struct Session: Equatable {
         pausedAt = date
     }
 
-    mutating func resume(at date: Date) {
-        guard state == .paused, let pausedAt else { return }
+    @discardableResult
+    mutating func resume(at date: Date) -> Bool {
+        guard state == .paused, let pausedAt, date >= pausedAt else { return false }
 
-        totalPausedSeconds += max(0, date.timeIntervalSince(pausedAt))
+        totalPausedSeconds += date.timeIntervalSince(pausedAt)
         self.pausedAt = nil
         state = .running
+        return true
     }
 
     mutating func end(at date: Date) {

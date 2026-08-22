@@ -333,3 +333,66 @@ func 一時停止中の復帰同期では停止時点より先の予定を通知
     #expect(session.reminderExecutionState.deliveredReminderIDs.isEmpty)
     #expect(nextReminder?.trigger == .elapsedMinutes(20))
 }
+
+@Test("セッション終了時刻ちょうどの予定まで生成する")
+func セッション終了時刻ちょうどの予定まで生成する() throws {
+    // Arrange
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 240, repeatIntervalMinutes: 240),
+        fuel: .init(isEnabled: false)
+    )
+
+    // Act
+    let schedule = try plan.schedule().get()
+
+    // Assert
+    #expect(schedule.map(\.trigger) == [
+        .elapsedMinutes(240),
+        .elapsedMinutes(480),
+        .elapsedMinutes(720),
+    ])
+}
+
+@Test("同時刻の予定は種類の順序に関係なく同じ識別子になる")
+func 同時刻の予定は種類の順序に関係なく同じ識別子になる() {
+    // Arrange
+    let hydrationAndFuel = ScheduledReminder(
+        trigger: .elapsedMinutes(40),
+        kinds: [.hydration, .fuel],
+        displayNames: [.hydration: "給水", .fuel: "補給"]
+    )
+    let fuelAndHydration = ScheduledReminder(
+        trigger: .elapsedMinutes(40),
+        kinds: [.fuel, .hydration],
+        displayNames: [.hydration: "給水", .fuel: "補給"]
+    )
+
+    // Act
+    let identifiers = [hydrationAndFuel.identifier, fuelAndHydration.identifier]
+
+    // Assert
+    #expect(identifiers == ["reminder-40-fuel-hydration", "reminder-40-fuel-hydration"])
+}
+
+@Test("過去時刻での再開は一時停止を維持して経過時間を巻き戻さない")
+func 過去時刻での再開は一時停止を維持して経過時間を巻き戻さない() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 1_000)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+
+    // Act
+    session.resume(at: startedAt.addingTimeInterval(10 * 60))
+    session.pause(at: startedAt.addingTimeInterval(10 * 60))
+    let didResume = session.resume(at: startedAt.addingTimeInterval(5 * 60))
+    let elapsedMinutes = session.elapsedMinutes(at: startedAt.addingTimeInterval(5 * 60))
+
+    // Assert
+    #expect(!didResume)
+    #expect(session.state == .paused)
+    #expect(elapsedMinutes == 10)
+    #expect(session.totalPausedSeconds == 0)
+}

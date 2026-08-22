@@ -29,7 +29,7 @@ make test
 make build
 ```
 
-`make lint` は Swift コンパイラの構文解析でソースの基本チェックを行います。`typecheck` はテスト用ビルド、`test` は iPhone 15 Pro Simulator 上の単体テスト、`build` は Simulator 向けアプリビルドです。品質ゲートはすべてローカルで実行します。
+`make lint` は Swift コンパイラの構文解析でソースの基本チェックを行います。`typecheck` はテスト用ビルド、`test` は iPhone 16 Simulator 上の単体テスト、`build` は Simulator 向けアプリビルドです。品質ゲートはすべてローカルで実行します。
 
 ローカルで起動するには、Xcode で `RaceFuelTimer.xcodeproj` を開き、iOS 17 以上の iPhone Simulator または実機を選び、`RaceFuelTimer` スキームを実行します。実機で実行する場合は、自分の Apple Developer Team を Signing & Capabilities で選択してください。
 
@@ -59,3 +59,4 @@ make build
 - [技術アーキテクチャ](docs/architecture.md)
 - [補給・給水通知の調査](docs/research/fueling-hydration-notification-guidelines.md)
 - [iOS通知・バックグラウンドSpike](docs/background-notification-spike.md)
+- [iOS回帰チェックリスト](docs/ios-regression-checklist.md)
