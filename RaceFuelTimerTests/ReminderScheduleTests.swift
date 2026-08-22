@@ -149,6 +149,19 @@ func 小数点にカンマを使うロケールのカスタム距離を読み取
     #expect(distance == 15.5)
 }
 
+@Test("小数点にカンマを使うロケールでカスタム距離を復元できる")
+func 小数点にカンマを使うロケールでカスタム距離を復元できる() {
+    // Arrange
+    let locale = Locale(identifier: "fr_FR")
+
+    // Act
+    let text = DistanceParser.text(from: 15.5, locale: locale)
+    let distance = DistanceParser.kilometers(from: text, locale: locale)
+
+    // Assert
+    #expect(distance == 15.5)
+}
+
 @Test("単位などの末尾文字を含むカスタム距離を拒否する")
 func 単位などの末尾文字を含むカスタム距離を拒否する() {
     // Arrange
