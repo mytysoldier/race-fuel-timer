@@ -2,23 +2,42 @@ import SwiftUI
 
 struct ContentView: View {
     let onStart: (ReminderPlan, Bool) -> Void
+    private let planStore: ReminderPlanStore
 
-    @State private var selectedDistance: PlannedDistance = .tenKilometers
-    @State private var customDistance = ""
-    @State private var hydrationIsEnabled = true
-    @State private var hydrationFirstReminder = "20"
-    @State private var hydrationRepeatInterval = "20"
-    @State private var hydrationDisplayName = ""
-    @State private var fuelIsEnabled = false
-    @State private var fuelFirstReminder = ""
-    @State private var fuelRepeatInterval = ""
-    @State private var fuelDisplayName = ""
+    @State private var selectedDistance: PlannedDistance
+    @State private var customDistance: String
+    @State private var hydrationIsEnabled: Bool
+    @State private var hydrationFirstReminder: String
+    @State private var hydrationRepeatInterval: String
+    @State private var hydrationDisplayName: String
+    @State private var fuelIsEnabled: Bool
+    @State private var fuelFirstReminder: String
+    @State private var fuelRepeatInterval: String
+    @State private var fuelDisplayName: String
     @FocusState private var isEditingNumber: Bool
     @State private var isNotificationExplanationPresented = false
+    @State private var isResetConfirmationPresented = false
     @State private var pendingPlan: ReminderPlan?
 
-    init(onStart: @escaping (ReminderPlan, Bool) -> Void = { _, _ in }) {
+    init(
+        onStart: @escaping (ReminderPlan, Bool) -> Void = { _, _ in },
+        planStore: ReminderPlanStore = .init()
+    ) {
         self.onStart = onStart
+        self.planStore = planStore
+
+        let savedPlan = planStore.load()
+        let distance = PlannedDistance.from(savedDistanceKilometers: savedPlan.selectedDistanceKilometers)
+        _selectedDistance = State(initialValue: distance)
+        _customDistance = State(initialValue: distance == .custom ? String(savedPlan.selectedDistanceKilometers) : "")
+        _hydrationIsEnabled = State(initialValue: savedPlan.hydration.isEnabled)
+        _hydrationFirstReminder = State(initialValue: savedPlan.hydration.firstReminderMinutes.map(String.init) ?? "")
+        _hydrationRepeatInterval = State(initialValue: savedPlan.hydration.repeatIntervalMinutes.map(String.init) ?? "")
+        _hydrationDisplayName = State(initialValue: savedPlan.hydration.displayName)
+        _fuelIsEnabled = State(initialValue: savedPlan.fuel.isEnabled)
+        _fuelFirstReminder = State(initialValue: savedPlan.fuel.firstReminderMinutes.map(String.init) ?? "")
+        _fuelRepeatInterval = State(initialValue: savedPlan.fuel.repeatIntervalMinutes.map(String.init) ?? "")
+        _fuelDisplayName = State(initialValue: savedPlan.fuel.displayName)
     }
 
     private var selectedDistanceKilometers: Double? {
@@ -74,6 +93,14 @@ struct ContentView: View {
         validationMessages.isEmpty
     }
 
+    private var savedPlan: SavedPlan? {
+        SavedPlan(
+            selectedDistanceKilometers: selectedDistanceKilometers ?? .nan,
+            hydration: plan.hydration,
+            fuel: plan.fuel
+        )
+    }
+
     var body: some View {
         ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -119,6 +146,10 @@ struct ContentView: View {
                         repeatInterval: $fuelRepeatInterval,
                         displayName: $fuelDisplayName
                     )
+
+                    Button("設定を初期化", role: .destructive) {
+                        isResetConfirmationPresented = true
+                    }
 
                     if !validationMessages.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
@@ -170,6 +201,18 @@ struct ContentView: View {
                 }
 
                 applyPreset(for: kilometers)
+            }
+            .onChange(of: savedPlan) { _, savedPlan in
+                guard let savedPlan else { return }
+                planStore.save(savedPlan)
+            }
+            .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
+                Button("初期化", role: .destructive) {
+                    planStore.reset()
+                    apply(savedPlan: .default)
+                }
+            } message: {
+                Text("保存した距離と給水・補給の設定を初期値へ戻します。")
             }
             .alert("通知を許可しますか？", isPresented: $isNotificationExplanationPresented) {
                 Button("通知なしで開始", role: .cancel) {
@@ -237,6 +280,20 @@ struct ContentView: View {
         fuelFirstReminder = preset.fuel.firstReminderMinutes.map(String.init) ?? ""
         fuelRepeatInterval = preset.fuel.repeatIntervalMinutes.map(String.init) ?? ""
         fuelDisplayName = preset.fuel.displayName
+    }
+
+    private func apply(savedPlan: SavedPlan) {
+        let distance = PlannedDistance.from(savedDistanceKilometers: savedPlan.selectedDistanceKilometers)
+        selectedDistance = distance
+        customDistance = distance == .custom ? String(savedPlan.selectedDistanceKilometers) : ""
+        hydrationIsEnabled = savedPlan.hydration.isEnabled
+        hydrationFirstReminder = savedPlan.hydration.firstReminderMinutes.map(String.init) ?? ""
+        hydrationRepeatInterval = savedPlan.hydration.repeatIntervalMinutes.map(String.init) ?? ""
+        hydrationDisplayName = savedPlan.hydration.displayName
+        fuelIsEnabled = savedPlan.fuel.isEnabled
+        fuelFirstReminder = savedPlan.fuel.firstReminderMinutes.map(String.init) ?? ""
+        fuelRepeatInterval = savedPlan.fuel.repeatIntervalMinutes.map(String.init) ?? ""
+        fuelDisplayName = savedPlan.fuel.displayName
     }
 
     private func startPendingPlan(requestingNotificationPermission: Bool) {

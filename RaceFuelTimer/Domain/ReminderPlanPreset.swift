@@ -28,6 +28,10 @@ enum PlannedDistance: String, CaseIterable, Identifiable {
         case .custom: nil
         }
     }
+
+    static func from(savedDistanceKilometers: Double) -> PlannedDistance {
+        allCases.first { $0.kilometers == savedDistanceKilometers } ?? .custom
+    }
 }
 
 enum ReminderPlanPreset {
