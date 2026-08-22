@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct RaceFuelTimerApp: App {
     @UIApplicationDelegateAdaptor(NotificationApplicationDelegate.self) private var applicationDelegate
+    @Environment(\.scenePhase) private var scenePhase
     @State private var session: Session?
     @State private var notificationsAreEnabledForCurrentSession = false
     @StateObject private var notificationScheduler = LocalNotificationScheduler()
@@ -49,6 +50,10 @@ struct RaceFuelTimerApp: App {
                         }
                     }
                 }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                session?.synchronizeAfterInterruption(at: .now)
             }
         }
     }

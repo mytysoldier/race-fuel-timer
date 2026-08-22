@@ -280,3 +280,43 @@ func 給水と補給で通知文言を区別する() throws {
     #expect(combinedReminder.notificationTitle == "給水・補給の時間です")
     #expect(combinedReminder.notificationBody.contains("ジェル"))
 }
+
+@Test("復帰時に経過済み予定を通知済みにして次回予定を二重表示しない")
+func 復帰時に経過済み予定を通知済みにして次回予定を二重表示しない() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+    let resumedAt = startedAt.addingTimeInterval(45 * 60)
+
+    // Act
+    session.synchronizeAfterInterruption(at: resumedAt)
+    let nextReminder = session.nextReminder(at: resumedAt)
+
+    // Assert
+    #expect(session.reminderExecutionState.deliveredReminderIDs == ["reminder-20-hydration", "reminder-40-hydration"])
+    #expect(nextReminder?.trigger == .elapsedMinutes(60))
+}
+
+@Test("一時停止中の復帰同期では停止時点より先の予定を通知済みにしない")
+func 一時停止中の復帰同期では停止時点より先の予定を通知済みにしない() throws {
+    // Arrange
+    let startedAt = Date(timeIntervalSinceReferenceDate: 0)
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )
+    var session = try Session(plan: plan, startedAt: startedAt)
+    session.pause(at: startedAt.addingTimeInterval(10 * 60))
+
+    // Act
+    session.synchronizeAfterInterruption(at: startedAt.addingTimeInterval(45 * 60))
+    let nextReminder = session.nextReminder(at: startedAt.addingTimeInterval(45 * 60))
+
+    // Assert
+    #expect(session.reminderExecutionState.deliveredReminderIDs.isEmpty)
+    #expect(nextReminder?.trigger == .elapsedMinutes(20))
+}
