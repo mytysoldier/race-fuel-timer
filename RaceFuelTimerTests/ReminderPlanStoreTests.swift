@@ -36,6 +36,35 @@ func 破損したJSONは初期設定へフォールバックして削除する()
     #expect(defaults.data(forKey: ReminderPlanStore.storageKey) == nil)
 }
 
+@Test("破損したJSONからの復旧を画面へ通知できる")
+func 破損したJSONからの復旧を画面へ通知できる() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set(Data("{not-json}".utf8), forKey: ReminderPlanStore.storageKey)
+
+    // Act
+    let loadResult = store.loadWithRecoveryStatus()
+
+    // Assert
+    #expect(loadResult.plan == .default)
+    #expect(loadResult.didRecover)
+}
+
+@Test("保存設定がない初回起動では復旧案内を表示しない")
+func 保存設定がない初回起動では復旧案内を表示しない() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+
+    // Act
+    let loadResult = store.loadWithRecoveryStatus()
+
+    // Assert
+    #expect(loadResult.plan == .default)
+    #expect(!loadResult.didRecover)
+}
+
 @Test("範囲外の保存設定は初期設定へフォールバックする")
 func 範囲外の保存設定は初期設定へフォールバックする() {
     // Arrange

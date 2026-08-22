@@ -60,15 +60,22 @@ struct ReminderPlanStore {
     }
 
     func load() -> SavedPlan {
-        guard let data = defaults.data(forKey: storageKey),
-              let payload = try? JSONDecoder().decode(SavedPlanPayload.self, from: data),
+        loadWithRecoveryStatus().plan
+    }
+
+    func loadWithRecoveryStatus() -> SavedPlanLoadResult {
+        guard let data = defaults.data(forKey: storageKey) else {
+            return .init(plan: .default, didRecover: false)
+        }
+
+        guard let payload = try? JSONDecoder().decode(SavedPlanPayload.self, from: data),
               let savedPlan = payload.savedPlan
         else {
             defaults.removeObject(forKey: storageKey)
-            return .default
+            return .init(plan: .default, didRecover: true)
         }
 
-        return savedPlan
+        return .init(plan: savedPlan, didRecover: false)
     }
 
     func save(_ savedPlan: SavedPlan) {
@@ -82,6 +89,11 @@ struct ReminderPlanStore {
     func reset() {
         defaults.removeObject(forKey: storageKey)
     }
+}
+
+struct SavedPlanLoadResult: Equatable {
+    let plan: SavedPlan
+    let didRecover: Bool
 }
 
 private struct SavedPlanPayload: Codable {

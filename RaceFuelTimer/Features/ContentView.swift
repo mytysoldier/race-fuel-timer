@@ -35,6 +35,7 @@ struct ContentView: View {
 
     @State private var editablePlan: EditablePlan
     @FocusState private var isEditingNumber: Bool
+    @State private var didRecoverSavedPlan: Bool
     @State private var isNotificationExplanationPresented = false
     @State private var isResetConfirmationPresented = false
     @State private var pendingPlan: ReminderPlan?
@@ -46,7 +47,9 @@ struct ContentView: View {
         self.onStart = onStart
         self.planStore = planStore
 
-        _editablePlan = State(initialValue: .init(savedPlan: planStore.load()))
+        let loadResult = planStore.loadWithRecoveryStatus()
+        _editablePlan = State(initialValue: .init(savedPlan: loadResult.plan))
+        _didRecoverSavedPlan = State(initialValue: loadResult.didRecover)
     }
 
     private var selectedDistanceKilometers: Double? {
@@ -156,6 +159,15 @@ struct ContentView: View {
                         displayName: $editablePlan.fuelDisplayName
                     )
 
+                    if didRecoverSavedPlan {
+                        Label(
+                            "保存した設定を安全な初期値へ戻しました。必要に応じて設定を確認してください。",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .foregroundStyle(.orange)
+                        .accessibilityElement(children: .combine)
+                    }
+
                     Button("設定を初期化", role: .destructive) {
                         isResetConfirmationPresented = true
                     }
@@ -219,6 +231,7 @@ struct ContentView: View {
                 Button("初期化", role: .destructive) {
                     planStore.reset()
                     apply(savedPlan: .default)
+                    didRecoverSavedPlan = false
                 }
             } message: {
                 Text("保存した距離と給水・補給の設定を初期値へ戻します。")
