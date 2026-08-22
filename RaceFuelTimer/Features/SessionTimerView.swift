@@ -21,6 +21,7 @@ struct SessionTimerView: View {
                     Text(session.state == .paused ? "一時停止中" : "実行中")
                         .font(.headline)
                         .foregroundStyle(session.state == .paused ? .orange : .green)
+                        .accessibilityLabel("セッションの状態：\(session.state == .paused ? "一時停止中" : "実行中")")
 
                     VStack(spacing: 8) {
                         Text("経過時間")
@@ -63,6 +64,7 @@ struct SessionTimerView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: .infinity)
+                    .accessibilityHint("タイマーを終了し、設定画面へ戻ります。終了後は再開できません")
                 }
             }
             .contentMargins(.horizontal, 16, for: .scrollContent)
@@ -86,13 +88,13 @@ struct SessionTimerView: View {
         switch notificationAuthorization {
         case .denied:
             GroupBox("通知がオフです") {
-                Text("iPhoneの「設定」>「通知」>「ランニング補給タイマー」で通知を許可すると、次回の開始時から予定を受け取れます。")
+                Text("タイマーと画面上の次回予定は使えます。通知を受け取るには、iPhoneの「設定」>「通知」>「ランニング補給タイマー」で許可してから、次回のセッションを開始してください。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
         case .unavailable:
             GroupBox("通知を予約できませんでした") {
-                Text("タイマーは継続しています。iPhoneの通知設定を確認して、次回の開始時にもう一度許可してください。")
+                Text("タイマーと画面上の次回予定は継続しています。iPhoneの通知設定を確認してから、次回のセッションを開始してください。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -105,8 +107,9 @@ struct SessionTimerView: View {
     private func nextReminderSection(_ reminders: [(ReminderKind, ScheduledReminder)], at date: Date) -> some View {
         GroupBox("次の予定") {
             if reminders.isEmpty {
-                Text("次の給水・補給予定はありません")
+                Text("このセッションに次の給水・補給予定はありません。設定した予定をすべて過ぎたか、通知を設定していません。")
                     .foregroundStyle(.secondary)
+                    .accessibilityLabel("次の予定はありません。設定した予定をすべて過ぎたか、通知を設定していません")
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(reminders, id: \.0) { kind, reminder in
