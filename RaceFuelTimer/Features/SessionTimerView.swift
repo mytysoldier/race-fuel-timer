@@ -36,6 +36,11 @@ struct SessionTimerView: View {
 
                     notificationStatusSection
 
+                    Text("画面ロック・アプリ切替中も経過時間は復帰時に再計算します。アプリを終了した場合、実行中セッションは復元されません。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     Spacer(minLength: 12)
 
                     Button(session.state == .paused ? "再開" : "一時停止") {

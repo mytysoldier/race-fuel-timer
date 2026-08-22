@@ -180,6 +180,12 @@ struct ReminderExecutionState: Equatable {
         deliveredReminderIDs.insert(reminder.identifier)
     }
 
+    mutating func markDelivered(remindersUpTo elapsedMinutes: Int, in schedule: [ScheduledReminder]) {
+        for reminder in schedule where reminder.trigger.minutes <= elapsedMinutes {
+            markDelivered(reminder)
+        }
+    }
+
     func nextReminder(
         in schedule: [ScheduledReminder],
         afterElapsedMinutes elapsedMinutes: Int
@@ -243,6 +249,15 @@ struct Session: Equatable {
 
     mutating func markDelivered(_ reminder: ScheduledReminder) {
         reminderExecutionState.markDelivered(reminder)
+    }
+
+    mutating func synchronizeAfterInterruption(at date: Date) {
+        guard state == .running else { return }
+
+        reminderExecutionState.markDelivered(
+            remindersUpTo: elapsedMinutes(at: date),
+            in: schedule
+        )
     }
 
     func elapsedSeconds(at date: Date) -> TimeInterval {
