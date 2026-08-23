@@ -59,7 +59,7 @@ struct ContentView: View {
     private let planStore: ReminderPlanStore
 
     @State private var editablePlan: EditablePlan
-    @FocusState private var isEditingNumber: Bool
+    @FocusState private var isEditingField: Bool
     @State private var didRecoverSavedPlan: Bool
     @State private var isNotificationExplanationPresented = false
     @State private var isResetConfirmationPresented = false
@@ -134,6 +134,12 @@ struct ContentView: View {
         validationMessages.isEmpty
     }
 
+    private var notificationLimitValidationMessage: String? {
+        plan.validationErrors().contains(.tooManyScheduledReminders)
+            ? ReminderPlanValidationError.tooManyScheduledReminders.message
+            : nil
+    }
+
     private var supplementalValidationMessages: [String] {
         var messages: [String] = []
 
@@ -148,6 +154,8 @@ struct ContentView: View {
         for error in plan.validationErrors() {
             switch error {
             case .missingFirstReminder, .missingRepeatInterval:
+                continue
+            case .tooManyScheduledReminders:
                 continue
             default:
                 messages.append(error.message)
@@ -201,7 +209,7 @@ struct ContentView: View {
                                 TextField("距離（km）", text: $editablePlan.customDistance)
                                     .keyboardType(.decimalPad)
                                     .textFieldStyle(.roundedBorder)
-                                    .focused($isEditingNumber)
+                                    .focused($isEditingField)
                                     .accessibilityLabel("カスタム距離（km）")
                                     .accessibilityHint("0.1〜200 kmの範囲で入力します")
                             }
@@ -214,6 +222,9 @@ struct ContentView: View {
                         firstReminder: $editablePlan.hydrationFirstReminder,
                         repeatInterval: $editablePlan.hydrationRepeatInterval,
                         displayName: $editablePlan.hydrationDisplayName,
+                        notificationLimitMessage: editablePlan.hydrationIsEnabled
+                            ? notificationLimitValidationMessage
+                            : nil,
                         onDisabled: { editablePlan.clearHydrationReminderInputs() }
                     )
 
@@ -223,6 +234,9 @@ struct ContentView: View {
                         firstReminder: $editablePlan.fuelFirstReminder,
                         repeatInterval: $editablePlan.fuelRepeatInterval,
                         displayName: $editablePlan.fuelDisplayName,
+                        notificationLimitMessage: editablePlan.fuelIsEnabled
+                            ? notificationLimitValidationMessage
+                            : nil,
                         onDisabled: { editablePlan.clearFuelReminderInputs() }
                     )
 
@@ -233,10 +247,6 @@ struct ContentView: View {
                         )
                         .foregroundStyle(.orange)
                         .accessibilityElement(children: .combine)
-                    }
-
-                    Button("設定を初期化", role: .destructive) {
-                        isResetConfirmationPresented = true
                     }
 
                     if !validationMessages.isEmpty {
@@ -261,6 +271,13 @@ struct ContentView: View {
                     Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+
+                    Divider()
+
+                    Button("設定を初期化", role: .destructive) {
+                        isResetConfirmationPresented = true
+                    }
+                    .buttonStyle(.bordered)
                 }
                 .padding()
             }
@@ -290,7 +307,7 @@ struct ContentView: View {
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("完了") { isEditingNumber = false }
+                    Button("完了") { isEditingField = false }
                 }
             }
             .onChange(of: editablePlan.selectedDistance) { _, distance in
@@ -352,6 +369,7 @@ struct ContentView: View {
         firstReminder: Binding<String>,
         repeatInterval: Binding<String>,
         displayName: Binding<String>,
+        notificationLimitMessage: String?,
         onDisabled: @escaping () -> Void
     ) -> some View {
         GroupBox(title) {
@@ -374,7 +392,7 @@ struct ContentView: View {
                         TextField("最初の通知（分）", text: firstReminder)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
-                            .focused($isEditingNumber)
+                            .focused($isEditingField)
                             .accessibilityLabel("\(title)の最初の通知（分）")
                             .accessibilityHint("5〜240分の整数で入力します")
                     }
@@ -384,7 +402,7 @@ struct ContentView: View {
                         TextField("繰り返し間隔（分）", text: repeatInterval)
                             .keyboardType(.numberPad)
                             .textFieldStyle(.roundedBorder)
-                            .focused($isEditingNumber)
+                            .focused($isEditingField)
                             .accessibilityLabel("\(title)の繰り返し間隔（分）")
                             .accessibilityHint("5〜240分の整数で入力します")
                     }
@@ -393,12 +411,18 @@ struct ContentView: View {
                             .font(.subheadline.weight(.medium))
                         TextField("通知表示名（任意）", text: displayName)
                             .textFieldStyle(.roundedBorder)
+                            .focused($isEditingField)
                             .accessibilityLabel("\(title)の通知表示名（任意）")
                             .accessibilityHint("30文字以内で入力します")
                     }
                     Text("最初の通知と間隔は 5〜240 分の整数です。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                    if let notificationLimitMessage {
+                        Label(notificationLimitMessage, systemImage: "exclamationmark.triangle")
+                            .font(.footnote)
+                            .foregroundStyle(.orange)
+                    }
                 }
             }
         }
