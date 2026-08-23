@@ -332,22 +332,34 @@ struct ContentView: View {
                     }
 
                 if isEnabled.wrappedValue {
-                    TextField("最初の通知（分）", text: firstReminder)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($isEditingNumber)
-                        .accessibilityLabel("\(title)の最初の通知（分）")
-                        .accessibilityHint("5〜240分の整数で入力します")
-                    TextField("繰り返し間隔（分）", text: repeatInterval)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($isEditingNumber)
-                        .accessibilityLabel("\(title)の繰り返し間隔（分）")
-                        .accessibilityHint("5〜240分の整数で入力します")
-                    TextField("通知表示名（任意）", text: displayName)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityLabel("\(title)の通知表示名（任意）")
-                        .accessibilityHint("30文字以内で入力します")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("最初の通知（分）")
+                            .font(.subheadline.weight(.medium))
+                        TextField("最初の通知（分）", text: firstReminder)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isEditingNumber)
+                            .accessibilityLabel("\(title)の最初の通知（分）")
+                            .accessibilityHint("5〜240分の整数で入力します")
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("繰り返し間隔（分）")
+                            .font(.subheadline.weight(.medium))
+                        TextField("繰り返し間隔（分）", text: repeatInterval)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isEditingNumber)
+                            .accessibilityLabel("\(title)の繰り返し間隔（分）")
+                            .accessibilityHint("5〜240分の整数で入力します")
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("通知表示名（任意）")
+                            .font(.subheadline.weight(.medium))
+                        TextField("通知表示名（任意）", text: displayName)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("\(title)の通知表示名（任意）")
+                            .accessibilityHint("30文字以内で入力します")
+                    }
                     Text("最初の通知と間隔は 5〜240 分の整数です。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
