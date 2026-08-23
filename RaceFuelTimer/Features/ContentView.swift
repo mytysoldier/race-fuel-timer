@@ -134,6 +134,29 @@ struct ContentView: View {
         validationMessages.isEmpty
     }
 
+    private var supplementalValidationMessages: [String] {
+        var messages: [String] = []
+
+        if editablePlan.selectedDistance == .custom,
+           let kilometers = selectedDistanceKilometers,
+           !(0.1...200).contains(kilometers) {
+            messages.append("カスタム距離は 0.1〜200 km で入力してください。")
+        } else if editablePlan.selectedDistance == .custom, selectedDistanceKilometers == nil {
+            messages.append("カスタム距離を数値で入力してください。")
+        }
+
+        for error in plan.validationErrors() {
+            switch error {
+            case .missingFirstReminder, .missingRepeatInterval:
+                continue
+            default:
+                messages.append(error.message)
+            }
+        }
+
+        return messages
+    }
+
     private var savedPlan: SavedPlan? {
         SavedPlan(
             selectedDistanceKilometers: selectedDistanceKilometers ?? .nan,
@@ -217,12 +240,19 @@ struct ContentView: View {
                     }
 
                     if !validationMessages.isEmpty {
-                        Label(
-                            "開始するには、通知設定の入力項目を確認してください。",
-                            systemImage: "info.circle"
-                        )
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label(
+                                "開始するには、通知設定の入力項目を確認してください。",
+                                systemImage: "info.circle"
+                            )
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            ForEach(supplementalValidationMessages, id: \.self) { message in
+                                Label(message, systemImage: "exclamationmark.triangle")
+                                    .font(.footnote)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("開始できない設定があります。\(validationMessages.joined(separator: "、"))")
                         .accessibilityHint("未入力または入力形式を修正すると開始できます")
