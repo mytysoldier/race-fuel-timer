@@ -8,13 +8,6 @@ struct SavedPlan: Equatable {
     let hydration: ReminderSetting
     let fuel: ReminderSetting
 
-    static let `default` = SavedPlan(
-        version: currentVersion,
-        selectedDistanceKilometers: 10,
-        hydration: .init(isEnabled: false),
-        fuel: .init(isEnabled: false)
-    )!
-
     init?(
         version: Int = Self.currentVersion,
         selectedDistanceKilometers: Double,
@@ -59,13 +52,13 @@ struct ReminderPlanStore {
         self.storageKey = storageKey
     }
 
-    func load() -> SavedPlan {
+    func load() -> SavedPlan? {
         loadWithRecoveryStatus().plan
     }
 
     func loadWithRecoveryStatus() -> SavedPlanLoadResult {
         guard let storedValue = defaults.object(forKey: storageKey) else {
-            return .init(plan: .default, didRecover: false, didLoadSavedPlan: false)
+            return .init(plan: nil, didRecover: false)
         }
 
         guard let data = storedValue as? Data,
@@ -73,10 +66,10 @@ struct ReminderPlanStore {
               let savedPlan = payload.savedPlan
         else {
             defaults.removeObject(forKey: storageKey)
-            return .init(plan: .default, didRecover: true, didLoadSavedPlan: false)
+            return .init(plan: nil, didRecover: true)
         }
 
-        return .init(plan: savedPlan, didRecover: false, didLoadSavedPlan: true)
+        return .init(plan: savedPlan, didRecover: false)
     }
 
     func save(_ savedPlan: SavedPlan) {
@@ -93,9 +86,8 @@ struct ReminderPlanStore {
 }
 
 struct SavedPlanLoadResult: Equatable {
-    let plan: SavedPlan
+    let plan: SavedPlan?
     let didRecover: Bool
-    let didLoadSavedPlan: Bool
 }
 
 private struct SavedPlanPayload: Codable {

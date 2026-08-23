@@ -76,9 +76,8 @@ struct ContentView: View {
         self.planStore = planStore
 
         let loadResult = planStore.loadWithRecoveryStatus()
-        _editablePlan = State(initialValue: loadResult.didLoadSavedPlan
-            ? .init(savedPlan: loadResult.plan)
-            : .init(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers)))
+        _editablePlan = State(initialValue: loadResult.plan.map(EditablePlan.init(savedPlan:))
+            ?? .init(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers)))
         _didRecoverSavedPlan = State(initialValue: loadResult.didRecover)
     }
 
