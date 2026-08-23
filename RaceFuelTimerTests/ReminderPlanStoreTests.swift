@@ -81,6 +81,22 @@ func 保存設定がない初回起動では復旧案内を表示しない() {
     #expect(!loadResult.didRecover)
 }
 
+@Test("初回起動時の通知時刻と間隔は未入力にする")
+func 初回起動時の通知時刻と間隔は未入力にする() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+
+    // Act
+    let restoredPlan = store.load()
+
+    // Assert
+    #expect(restoredPlan.hydration.firstReminderMinutes == nil)
+    #expect(restoredPlan.hydration.repeatIntervalMinutes == nil)
+    #expect(restoredPlan.fuel.firstReminderMinutes == nil)
+    #expect(restoredPlan.fuel.repeatIntervalMinutes == nil)
+}
+
 @Test("範囲外の保存設定は初期設定へフォールバックする")
 func 範囲外の保存設定は初期設定へフォールバックする() {
     // Arrange
