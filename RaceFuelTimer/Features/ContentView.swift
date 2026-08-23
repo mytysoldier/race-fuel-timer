@@ -209,17 +209,15 @@ struct ContentView: View {
                     }
 
                     if !validationMessages.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("開始前に設定を確認してください")
-                                .font(.headline)
-                            ForEach(validationMessages, id: \.self) { message in
-                                Label(message, systemImage: "exclamationmark.circle.fill")
-                            }
-                        }
-                        .foregroundStyle(.red)
+                        Label(
+                            "開始するには、通知設定の入力項目を確認してください。",
+                            systemImage: "info.circle"
+                        )
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("開始できない設定があります。\(validationMessages.joined(separator: "、"))")
-                        .accessibilityHint("表示された内容を修正すると開始できます")
+                        .accessibilityHint("未入力または入力形式を修正すると開始できます")
                     }
 
                     Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
