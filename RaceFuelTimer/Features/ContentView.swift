@@ -134,6 +134,29 @@ struct ContentView: View {
         validationMessages.isEmpty
     }
 
+    private var supplementalValidationMessages: [String] {
+        var messages: [String] = []
+
+        if editablePlan.selectedDistance == .custom,
+           let kilometers = selectedDistanceKilometers,
+           !(0.1...200).contains(kilometers) {
+            messages.append("カスタム距離は 0.1〜200 km で入力してください。")
+        } else if editablePlan.selectedDistance == .custom, selectedDistanceKilometers == nil {
+            messages.append("カスタム距離を数値で入力してください。")
+        }
+
+        for error in plan.validationErrors() {
+            switch error {
+            case .missingFirstReminder, .missingRepeatInterval:
+                continue
+            default:
+                messages.append(error.message)
+            }
+        }
+
+        return messages
+    }
+
     private var savedPlan: SavedPlan? {
         SavedPlan(
             selectedDistanceKilometers: selectedDistanceKilometers ?? .nan,
@@ -153,8 +176,16 @@ struct ContentView: View {
                         Text("通知を使わなくても、画面上の経過時間と次の予定は確認できます。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                        Button {
+                            isSafetyInformationPresented = true
+                        } label: {
+                            Label("安全に利用するための注意", systemImage: "heart.text.square")
+                                .font(.footnote.weight(.medium))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.tint)
+                        .accessibilityHint("安全上の注意を開きます")
                     }
-                    .accessibilityElement(children: .combine)
 
                     GroupBox("予定距離") {
                         VStack(alignment: .leading, spacing: 12) {
@@ -210,16 +241,21 @@ struct ContentView: View {
 
                     if !validationMessages.isEmpty {
                         VStack(alignment: .leading, spacing: 6) {
-                            Text("開始前に設定を確認してください")
-                                .font(.headline)
-                            ForEach(validationMessages, id: \.self) { message in
-                                Label(message, systemImage: "exclamationmark.circle.fill")
+                            Label(
+                                "開始するには、通知設定の入力項目を確認してください。",
+                                systemImage: "info.circle"
+                            )
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            ForEach(supplementalValidationMessages, id: \.self) { message in
+                                Label(message, systemImage: "exclamationmark.triangle")
+                                    .font(.footnote)
+                                    .foregroundStyle(.orange)
                             }
                         }
-                        .foregroundStyle(.red)
                         .accessibilityElement(children: .combine)
                         .accessibilityLabel("開始できない設定があります。\(validationMessages.joined(separator: "、"))")
-                        .accessibilityHint("表示された内容を修正すると開始できます")
+                        .accessibilityHint("未入力または入力形式を修正すると開始できます")
                     }
 
                     Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
@@ -332,22 +368,34 @@ struct ContentView: View {
                     }
 
                 if isEnabled.wrappedValue {
-                    TextField("最初の通知（分）", text: firstReminder)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($isEditingNumber)
-                        .accessibilityLabel("\(title)の最初の通知（分）")
-                        .accessibilityHint("5〜240分の整数で入力します")
-                    TextField("繰り返し間隔（分）", text: repeatInterval)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                        .focused($isEditingNumber)
-                        .accessibilityLabel("\(title)の繰り返し間隔（分）")
-                        .accessibilityHint("5〜240分の整数で入力します")
-                    TextField("通知表示名（任意）", text: displayName)
-                        .textFieldStyle(.roundedBorder)
-                        .accessibilityLabel("\(title)の通知表示名（任意）")
-                        .accessibilityHint("30文字以内で入力します")
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("最初の通知（分）")
+                            .font(.subheadline.weight(.medium))
+                        TextField("最初の通知（分）", text: firstReminder)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isEditingNumber)
+                            .accessibilityLabel("\(title)の最初の通知（分）")
+                            .accessibilityHint("5〜240分の整数で入力します")
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("繰り返し間隔（分）")
+                            .font(.subheadline.weight(.medium))
+                        TextField("繰り返し間隔（分）", text: repeatInterval)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .focused($isEditingNumber)
+                            .accessibilityLabel("\(title)の繰り返し間隔（分）")
+                            .accessibilityHint("5〜240分の整数で入力します")
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("通知表示名（任意）")
+                            .font(.subheadline.weight(.medium))
+                        TextField("通知表示名（任意）", text: displayName)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("\(title)の通知表示名（任意）")
+                            .accessibilityHint("30文字以内で入力します")
+                    }
                     Text("最初の通知と間隔は 5〜240 分の整数です。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
