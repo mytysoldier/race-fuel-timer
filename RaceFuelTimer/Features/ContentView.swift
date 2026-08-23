@@ -155,8 +155,7 @@ struct ContentView: View {
             switch error {
             case .missingFirstReminder, .missingRepeatInterval:
                 continue
-            case .tooManyScheduledReminders
-                where editablePlan.hydrationIsEnabled != editablePlan.fuelIsEnabled:
+            case .tooManyScheduledReminders:
                 continue
             default:
                 messages.append(error.message)
@@ -223,9 +222,9 @@ struct ContentView: View {
                         firstReminder: $editablePlan.hydrationFirstReminder,
                         repeatInterval: $editablePlan.hydrationRepeatInterval,
                         displayName: $editablePlan.hydrationDisplayName,
-                        notificationLimitMessage: editablePlan.fuelIsEnabled
-                            ? nil
-                            : notificationLimitValidationMessage,
+                        notificationLimitMessage: editablePlan.hydrationIsEnabled
+                            ? notificationLimitValidationMessage
+                            : nil,
                         onDisabled: { editablePlan.clearHydrationReminderInputs() }
                     )
 
@@ -235,9 +234,9 @@ struct ContentView: View {
                         firstReminder: $editablePlan.fuelFirstReminder,
                         repeatInterval: $editablePlan.fuelRepeatInterval,
                         displayName: $editablePlan.fuelDisplayName,
-                        notificationLimitMessage: editablePlan.hydrationIsEnabled
-                            ? nil
-                            : notificationLimitValidationMessage,
+                        notificationLimitMessage: editablePlan.fuelIsEnabled
+                            ? notificationLimitValidationMessage
+                            : nil,
                         onDisabled: { editablePlan.clearFuelReminderInputs() }
                     )
 
