@@ -79,6 +79,7 @@ func 保存設定がない初回起動では復旧案内を表示しない() {
     // Assert
     #expect(loadResult.plan == .default)
     #expect(!loadResult.didRecover)
+    #expect(!loadResult.didLoadSavedPlan)
 }
 
 @Test("初回起動時の通知時刻と間隔は未入力にする")
@@ -95,6 +96,26 @@ func 初回起動時の通知時刻と間隔は未入力にする() {
     #expect(restoredPlan.hydration.repeatIntervalMinutes == nil)
     #expect(restoredPlan.fuel.firstReminderMinutes == nil)
     #expect(restoredPlan.fuel.repeatIntervalMinutes == nil)
+}
+
+@Test("保存した設定がある場合は保存値を読み込む")
+func 保存した設定がある場合は保存値を読み込む() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    let savedPlan = SavedPlan(
+        selectedDistanceKilometers: 10,
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )!
+    store.save(savedPlan)
+
+    // Act
+    let loadResult = store.loadWithRecoveryStatus()
+
+    // Assert
+    #expect(loadResult.plan == savedPlan)
+    #expect(loadResult.didLoadSavedPlan)
 }
 
 @Test("範囲外の保存設定は初期設定へフォールバックする")
