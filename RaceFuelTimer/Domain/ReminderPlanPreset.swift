@@ -41,13 +41,13 @@ enum ReminderPlanPreset {
         return ReminderPlan(
             hydration: .init(
                 isEnabled: true,
-                firstReminderMinutes: 20,
-                repeatIntervalMinutes: 20
+                firstReminderMinutes: nil,
+                repeatIntervalMinutes: nil
             ),
             fuel: .init(
                 isEnabled: fuelIsEnabled,
-                firstReminderMinutes: fuelIsEnabled ? 40 : nil,
-                repeatIntervalMinutes: fuelIsEnabled ? 40 : nil
+                firstReminderMinutes: nil,
+                repeatIntervalMinutes: nil
             )
         )
     }

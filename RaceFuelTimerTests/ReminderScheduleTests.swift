@@ -106,12 +106,13 @@ func 十五km未満のプリセットでは補給通知を無効にする() {
 
     // Assert
     #expect(plan.hydration.isEnabled)
-    #expect(plan.hydration.firstReminderMinutes == 20)
+    #expect(plan.hydration.firstReminderMinutes == nil)
+    #expect(plan.hydration.repeatIntervalMinutes == nil)
     #expect(!plan.fuel.isEnabled)
 }
 
-@Test("15km以上のプリセットでは補給通知を40分で有効にする")
-func 十五km以上のプリセットでは補給通知を40分で有効にする() {
+@Test("15km以上のプリセットでは補給通知を入力なしで有効にする")
+func 十五km以上のプリセットでは補給通知を入力なしで有効にする() {
     // Arrange
     let distance = PlannedDistance.halfMarathon.kilometers
 
@@ -120,8 +121,8 @@ func 十五km以上のプリセットでは補給通知を40分で有効にす�
 
     // Assert
     #expect(plan.fuel.isEnabled)
-    #expect(plan.fuel.firstReminderMinutes == 40)
-    #expect(plan.fuel.repeatIntervalMinutes == 40)
+    #expect(plan.fuel.firstReminderMinutes == nil)
+    #expect(plan.fuel.repeatIntervalMinutes == nil)
 }
 
 @Test("カスタム距離が15km以上なら補給通知を有効にする")
@@ -134,7 +135,7 @@ func カスタム距離が十五km以上なら補給通知を有効にする() {
 
     // Assert
     #expect(plan.fuel.isEnabled)
-    #expect(plan.fuel.firstReminderMinutes == 40)
+    #expect(plan.fuel.firstReminderMinutes == nil)
 }
 
 @Test("小数点にカンマを使うロケールのカスタム距離を読み取る")

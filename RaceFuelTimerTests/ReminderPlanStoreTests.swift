@@ -21,8 +21,8 @@ func 有効な設定を保存して読み込める() {
     #expect(restoredPlan == savedPlan)
 }
 
-@Test("破損したJSONは初期設定へフォールバックして削除する")
-func 破損したJSONは初期設定へフォールバックして削除する() {
+@Test("破損したJSONは保存設定なしへ復旧して削除する")
+func 破損したJSONは保存設定なしへ復旧して削除する() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
@@ -32,7 +32,7 @@ func 破損したJSONは初期設定へフォールバックして削除する()
     let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == .default)
+    #expect(restoredPlan == nil)
     #expect(defaults.data(forKey: ReminderPlanStore.storageKey) == nil)
 }
 
@@ -47,7 +47,7 @@ func 破損したJSONからの復旧を画面へ通知できる() {
     let loadResult = store.loadWithRecoveryStatus()
 
     // Assert
-    #expect(loadResult.plan == .default)
+    #expect(loadResult.plan == nil)
     #expect(loadResult.didRecover)
 }
 
@@ -62,13 +62,13 @@ func Data以外の保存値からの復旧を画面へ通知できる() {
     let loadResult = store.loadWithRecoveryStatus()
 
     // Assert
-    #expect(loadResult.plan == .default)
+    #expect(loadResult.plan == nil)
     #expect(loadResult.didRecover)
     #expect(defaults.object(forKey: ReminderPlanStore.storageKey) == nil)
 }
 
-@Test("保存設定がない初回起動では復旧案内を表示しない")
-func 保存設定がない初回起動では復旧案内を表示しない() {
+@Test("保存設定がない初回起動では保存値を返さず復旧案内を表示しない")
+func 保存設定がない初回起動では保存値を返さず復旧案内を表示しない() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
@@ -77,7 +77,42 @@ func 保存設定がない初回起動では復旧案内を表示しない() {
     let loadResult = store.loadWithRecoveryStatus()
 
     // Assert
-    #expect(loadResult.plan == .default)
+    #expect(loadResult.plan == nil)
+    #expect(!loadResult.didRecover)
+}
+
+@Test("未保存時の編集用プリセットは通知時刻と間隔を未入力にする")
+func 未保存時の編集用プリセットは通知時刻と間隔を未入力にする() {
+    // Arrange
+    let preset = ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers)
+
+    // Act
+    let editablePlan = EditablePlan(preset: preset)
+
+    // Assert
+    #expect(editablePlan.hydrationIsEnabled)
+    #expect(editablePlan.hydrationFirstReminder.isEmpty)
+    #expect(editablePlan.hydrationRepeatInterval.isEmpty)
+    #expect(!editablePlan.fuelIsEnabled)
+}
+
+@Test("保存した設定がある場合は保存値を読み込む")
+func 保存した設定がある場合は保存値を読み込む() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    let savedPlan = SavedPlan(
+        selectedDistanceKilometers: 10,
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20),
+        fuel: .init(isEnabled: false)
+    )!
+    store.save(savedPlan)
+
+    // Act
+    let loadResult = store.loadWithRecoveryStatus()
+
+    // Assert
+    #expect(loadResult.plan == savedPlan)
     #expect(!loadResult.didRecover)
 }
 
@@ -99,7 +134,7 @@ func 範囲外の保存設定は初期設定へフォールバックする() {
     let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == .default)
+    #expect(restoredPlan == nil)
 }
 
 @Test("無効な通知に残った範囲外の保存設定は初期設定へフォールバックする")
@@ -120,13 +155,13 @@ func 無効な通知に残った範囲外の保存設定は初期設定へフォ
     let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == .default)
+    #expect(restoredPlan == nil)
 }
 
 @Test("通知を無効にすると入力済みの値を初期化する")
 func 通知を無効にすると入力済みの値を初期化する() {
     // Arrange
-    var editablePlan = EditablePlan(savedPlan: .default)
+    var editablePlan = EditablePlan(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
     editablePlan.fuelIsEnabled = false
     editablePlan.fuelFirstReminder = "0"
     editablePlan.fuelRepeatInterval = "999"
@@ -159,7 +194,7 @@ func 旧バージョンの保存設定は初期設定へフォールバックす
     let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == .default)
+    #expect(restoredPlan == nil)
 }
 
 @Test("対応していない保存バージョンは削除して初期設定へ復旧する")
@@ -180,13 +215,13 @@ func 対応していない保存バージョンは削除して初期設定へ復
     let loadResult = store.loadWithRecoveryStatus()
 
     // Assert
-    #expect(loadResult.plan == .default)
+    #expect(loadResult.plan == nil)
     #expect(loadResult.didRecover)
     #expect(defaults.object(forKey: ReminderPlanStore.storageKey) == nil)
 }
 
-@Test("初期化すると保存設定を削除して初期設定を返す")
-func 初期化すると保存設定を削除して初期設定を返す() {
+@Test("初期化すると保存設定を削除して保存値なしを返す")
+func 初期化すると保存設定を削除して保存値なしを返す() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
@@ -202,7 +237,7 @@ func 初期化すると保存設定を削除して初期設定を返す() {
     let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == .default)
+    #expect(restoredPlan == nil)
     #expect(defaults.data(forKey: ReminderPlanStore.storageKey) == nil)
 }
 

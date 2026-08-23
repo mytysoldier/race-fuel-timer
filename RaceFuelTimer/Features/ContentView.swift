@@ -28,6 +28,19 @@ struct EditablePlan: Equatable {
         fuelDisplayName = savedPlan.fuel.displayName
     }
 
+    init(preset: ReminderPlan) {
+        selectedDistance = .tenKilometers
+        customDistance = ""
+        hydrationIsEnabled = preset.hydration.isEnabled
+        hydrationFirstReminder = preset.hydration.firstReminderMinutes.map(String.init) ?? ""
+        hydrationRepeatInterval = preset.hydration.repeatIntervalMinutes.map(String.init) ?? ""
+        hydrationDisplayName = preset.hydration.displayName
+        fuelIsEnabled = preset.fuel.isEnabled
+        fuelFirstReminder = preset.fuel.firstReminderMinutes.map(String.init) ?? ""
+        fuelRepeatInterval = preset.fuel.repeatIntervalMinutes.map(String.init) ?? ""
+        fuelDisplayName = preset.fuel.displayName
+    }
+
     mutating func clearHydrationReminderInputs() {
         hydrationFirstReminder = ""
         hydrationRepeatInterval = ""
@@ -63,7 +76,8 @@ struct ContentView: View {
         self.planStore = planStore
 
         let loadResult = planStore.loadWithRecoveryStatus()
-        _editablePlan = State(initialValue: .init(savedPlan: loadResult.plan))
+        _editablePlan = State(initialValue: loadResult.plan.map(EditablePlan.init(savedPlan:))
+            ?? .init(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers)))
         _didRecoverSavedPlan = State(initialValue: loadResult.didRecover)
     }
 
@@ -266,7 +280,7 @@ struct ContentView: View {
             .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
                 Button("初期化", role: .destructive) {
                     planStore.reset()
-                    apply(savedPlan: .default)
+                    apply(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
                     didRecoverSavedPlan = false
                 }
             } message: {
@@ -370,6 +384,10 @@ struct ContentView: View {
 
     private func apply(savedPlan: SavedPlan) {
         editablePlan = .init(savedPlan: savedPlan)
+    }
+
+    private func apply(preset: ReminderPlan) {
+        editablePlan = .init(preset: preset)
     }
 
     private func startPendingPlan(requestingNotificationPermission: Bool) {

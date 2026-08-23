@@ -55,7 +55,8 @@ flowchart TB
 ### 保存アダプタ
 
 - `SavedPlan` をバージョン付きの小さなデータとして保存・読み込みする
-- JSON解析失敗、欠損、型不一致、範囲外、未知バージョンでは安全な初期設定へフォールバックする
+- JSON解析失敗、欠損、型不一致、範囲外、未知バージョンでは壊れた保存値を削除し、保存設定なしを返す
+- 保存設定なしの場合、画面層が未入力を許容する編集用プリセットを組み立てる
 - 位置情報、ルート、走行履歴、健康情報、通知履歴は保存しない
 
 ## データモデル
@@ -66,7 +67,7 @@ ReminderSetting { isEnabled, firstReminderMinutes, repeatIntervalMinutes, displa
 Session { state, startedAt, pausedAt?, totalPausedSeconds, scheduledNotificationIDs }
 ```
 
-- `SavedPlan` は設定の永続化だけに使う。`version` と全フィールドを読み込み時に検証する。
+- `SavedPlan` は有効な設定の永続化だけに使う。`version` と全フィールドを読み込み時に検証し、保存設定なしは `SavedPlan?` の `nil` で表す。
 - `Session` は実行中だけ保持する。終了時には `scheduledNotificationIDs` を使い、未配信通知を取り消して破棄する。
 - アプリ終了後のセッション復元はMVP対象外である。予約済み通知の取消・再予約は保証しない。
 
