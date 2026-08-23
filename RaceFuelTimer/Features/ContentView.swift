@@ -153,8 +153,16 @@ struct ContentView: View {
                         Text("通知を使わなくても、画面上の経過時間と次の予定は確認できます。")
                             .font(.footnote)
                             .foregroundStyle(.secondary)
+                        Button {
+                            isSafetyInformationPresented = true
+                        } label: {
+                            Label("安全に利用するための注意", systemImage: "heart.text.square")
+                                .font(.footnote.weight(.medium))
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.tint)
+                        .accessibilityHint("安全上の注意を開きます")
                     }
-                    .accessibilityElement(children: .combine)
 
                     GroupBox("予定距離") {
                         VStack(alignment: .leading, spacing: 12) {
