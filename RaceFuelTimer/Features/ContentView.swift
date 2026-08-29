@@ -134,10 +134,26 @@ struct ContentView: View {
         validationMessages.isEmpty
     }
 
-    private var notificationLimitValidationMessage: String? {
-        plan.validationErrors().contains(.tooManyScheduledReminders)
-            ? ReminderPlanValidationError.tooManyScheduledReminders.message
-            : nil
+    private func notificationLimitValidationMessage(for setting: ReminderSetting) -> String? {
+        guard plan.validationErrors().contains(.tooManyScheduledReminders) else {
+            return nil
+        }
+
+        let enabledSettings = [plan.hydration, plan.fuel].filter(\.isEnabled)
+        guard enabledSettings.count == 1,
+              let firstReminderMinutes = setting.firstReminderMinutes,
+              let repeatIntervalMinutes = setting.repeatIntervalMinutes
+        else {
+            return ReminderPlanValidationError.tooManyScheduledReminders.message
+        }
+
+        let scheduledReminderCount =
+            (ReminderPlan.maximumSessionMinutes - firstReminderMinutes) / repeatIntervalMinutes + 1
+        let minimumRepeatInterval =
+            (ReminderPlan.maximumSessionMinutes - firstReminderMinutes)
+                / ReminderPlan.maximumScheduledReminders + 1
+
+        return "現在の設定では通知は\(scheduledReminderCount)件です。最初の通知が\(firstReminderMinutes)分の場合、繰り返し間隔を\(minimumRepeatInterval)分以上にすると60件以内になります。"
     }
 
     private var supplementalValidationMessages: [String] {
@@ -223,7 +239,7 @@ struct ContentView: View {
                         repeatInterval: $editablePlan.hydrationRepeatInterval,
                         displayName: $editablePlan.hydrationDisplayName,
                         notificationLimitMessage: editablePlan.hydrationIsEnabled
-                            ? notificationLimitValidationMessage
+                            ? notificationLimitValidationMessage(for: plan.hydration)
                             : nil,
                         onDisabled: { editablePlan.clearHydrationReminderInputs() }
                     )
@@ -235,7 +251,7 @@ struct ContentView: View {
                         repeatInterval: $editablePlan.fuelRepeatInterval,
                         displayName: $editablePlan.fuelDisplayName,
                         notificationLimitMessage: editablePlan.fuelIsEnabled
-                            ? notificationLimitValidationMessage
+                            ? notificationLimitValidationMessage(for: plan.fuel)
                             : nil,
                         onDisabled: { editablePlan.clearFuelReminderInputs() }
                     )
