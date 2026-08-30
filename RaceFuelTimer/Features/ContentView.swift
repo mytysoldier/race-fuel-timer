@@ -87,6 +87,10 @@ struct ContentView: View {
         EditablePlan.notificationEndOptions(intervalMinutes: editablePlan.intervalMinutes)
     }
 
+    private var quickNotificationEndOptions: [Int] {
+        Self.quickEndMinutes.filter(notificationEndOptions.contains)
+    }
+
     private var savedPlan: SavedPlan? {
         SavedPlan(selectedDistanceKilometers: 10, hydration: plan.hydration, fuel: plan.fuel, notificationEndMinutes: plan.notificationEndMinutes)
     }
@@ -106,7 +110,7 @@ struct ContentView: View {
                             Text("どのくらいの間隔で知らせる？").font(.subheadline.weight(.medium))
                             quickChoiceRow(values: Self.quickIntervals, selected: editablePlan.intervalMinutes, title: { "\($0)分" }, onSelect: selectInterval)
                             Text("いつまで知らせる？").font(.subheadline.weight(.medium))
-                            quickChoiceRow(values: Self.quickEndMinutes, selected: editablePlan.notificationEndMinutes, title: formattedDuration, onSelect: selectNotificationEnd)
+                            quickChoiceRow(values: quickNotificationEndOptions, selected: editablePlan.notificationEndMinutes, title: formattedDuration, onSelect: selectNotificationEnd)
                             Text(notificationSummary).font(.footnote).foregroundStyle(.secondary)
                         } else {
                             Text("通知しません。タイマーだけを使えます。").font(.footnote).foregroundStyle(.secondary)
@@ -247,6 +251,10 @@ struct ContentView: View {
 
     private func startPlan() {
         guard plan.validationErrors().isEmpty else { return }
+        guard editablePlan.isReminderEnabled else {
+            onStart(plan, false)
+            return
+        }
         if hasChosenNotificationUsage {
             onStart(plan, shouldUseNotifications && editablePlan.isReminderEnabled)
         } else {

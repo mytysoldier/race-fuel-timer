@@ -117,8 +117,8 @@ private struct SavedPlanPayload: Codable {
         SavedPlan(
             version: version,
             selectedDistanceKilometers: selectedDistanceKilometers,
-            hydration: hydration.reminderSetting,
-            fuel: fuel.reminderSetting,
+            hydration: hydration.reminderSetting(normalizingLegacyFiveMinuteValue: notificationEndMinutes == nil),
+            fuel: fuel.reminderSetting(normalizingLegacyFiveMinuteValue: notificationEndMinutes == nil),
             notificationEndMinutes: notificationEndMinutes ?? 240
         )
     }
@@ -137,12 +137,17 @@ private struct ReminderSettingPayload: Codable {
         displayName = setting.displayName
     }
 
-    var reminderSetting: ReminderSetting {
+    func reminderSetting(normalizingLegacyFiveMinuteValue: Bool) -> ReminderSetting {
         ReminderSetting(
             isEnabled: isEnabled,
-            firstReminderMinutes: firstReminderMinutes,
-            repeatIntervalMinutes: repeatIntervalMinutes,
+            firstReminderMinutes: normalizedMinutes(firstReminderMinutes, normalizingLegacyFiveMinuteValue: normalizingLegacyFiveMinuteValue),
+            repeatIntervalMinutes: normalizedMinutes(repeatIntervalMinutes, normalizingLegacyFiveMinuteValue: normalizingLegacyFiveMinuteValue),
             displayName: displayName
         )
+    }
+
+    private func normalizedMinutes(_ minutes: Int?, normalizingLegacyFiveMinuteValue: Bool) -> Int? {
+        guard normalizingLegacyFiveMinuteValue, minutes == 5 else { return minutes }
+        return ReminderPlan.allowedReminderMinutes.lowerBound
     }
 }

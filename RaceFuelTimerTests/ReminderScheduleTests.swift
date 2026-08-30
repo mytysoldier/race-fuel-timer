@@ -64,6 +64,19 @@ func 予約上限を超える組み合わせを拒否する() {
     #expect(schedule == .failure(.tooManyScheduledReminders))
 }
 
+@Test("詳細設定の間隔より短い通知終了予定は候補に出さない")
+func 詳細設定の間隔より短い通知終了予定は候補に出さない() {
+    // Arrange
+    let intervalMinutes = 240
+
+    // Act
+    let options = EditablePlan.notificationEndOptions(intervalMinutes: intervalMinutes)
+
+    // Assert
+    #expect(!options.contains(120))
+    #expect(options.first == 240)
+}
+
 @Test("通知メッセージを通知本文に使う")
 func 通知メッセージを通知本文に使う() throws {
     // Arrange
