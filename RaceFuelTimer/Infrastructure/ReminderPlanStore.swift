@@ -117,8 +117,8 @@ private struct SavedPlanPayload: Codable {
         SavedPlan(
             version: version,
             selectedDistanceKilometers: selectedDistanceKilometers,
-            hydration: hydration.reminderSetting(normalizingLegacyFiveMinuteValue: notificationEndMinutes == nil),
-            fuel: fuel.reminderSetting(normalizingLegacyFiveMinuteValue: notificationEndMinutes == nil),
+            hydration: hydration.reminderSetting(normalizingLegacyInterval: notificationEndMinutes == nil),
+            fuel: fuel.reminderSetting(normalizingLegacyInterval: notificationEndMinutes == nil),
             notificationEndMinutes: notificationEndMinutes ?? 240
         )
     }
@@ -137,17 +137,24 @@ private struct ReminderSettingPayload: Codable {
         displayName = setting.displayName
     }
 
-    func reminderSetting(normalizingLegacyFiveMinuteValue: Bool) -> ReminderSetting {
+    func reminderSetting(normalizingLegacyInterval: Bool) -> ReminderSetting {
         ReminderSetting(
             isEnabled: isEnabled,
-            firstReminderMinutes: normalizedMinutes(firstReminderMinutes, normalizingLegacyFiveMinuteValue: normalizingLegacyFiveMinuteValue),
-            repeatIntervalMinutes: normalizedMinutes(repeatIntervalMinutes, normalizingLegacyFiveMinuteValue: normalizingLegacyFiveMinuteValue),
+            firstReminderMinutes: normalizedMinutes(firstReminderMinutes, normalizingLegacyInterval: normalizingLegacyInterval),
+            repeatIntervalMinutes: normalizedMinutes(repeatIntervalMinutes, normalizingLegacyInterval: normalizingLegacyInterval),
             displayName: displayName
         )
     }
 
-    private func normalizedMinutes(_ minutes: Int?, normalizingLegacyFiveMinuteValue: Bool) -> Int? {
-        guard normalizingLegacyFiveMinuteValue, minutes == 5 else { return minutes }
-        return ReminderPlan.allowedReminderMinutes.lowerBound
+    private func normalizedMinutes(_ minutes: Int?, normalizingLegacyInterval: Bool) -> Int? {
+        guard normalizingLegacyInterval,
+              let minutes,
+              (5...ReminderPlan.allowedReminderMinutes.upperBound).contains(minutes)
+        else {
+            return minutes
+        }
+
+        let increment = ReminderPlan.allowedReminderMinutes.lowerBound
+        return min(((minutes + increment - 1) / increment) * increment, ReminderPlan.allowedReminderMinutes.upperBound)
     }
 }

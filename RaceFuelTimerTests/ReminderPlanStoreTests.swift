@@ -65,6 +65,28 @@ func 旧形式の五分通知は十分へ引き上げて引き継ぐ() {
     #expect(restoredPlan?.hydration.repeatIntervalMinutes == 10)
 }
 
+@Test("旧形式の任意の通知間隔は次の10分単位へ引き上げて引き継ぐ")
+func 旧形式の任意の通知間隔は次の十分単位へ引き上げて引き継ぐ() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set(
+        Data(
+            """
+            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":15,"repeatIntervalMinutes":235,"displayName":"補給の時間です"},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
+            """.utf8
+        ),
+        forKey: ReminderPlanStore.storageKey
+    )
+
+    // Act
+    let restoredPlan = store.load()
+
+    // Assert
+    #expect(restoredPlan?.hydration.firstReminderMinutes == 20)
+    #expect(restoredPlan?.hydration.repeatIntervalMinutes == 240)
+}
+
 @Test("旧ジェル通知だけの設定を補給リマインドへ引き継ぐ")
 func 旧ジェル通知だけの設定を補給リマインドへ引き継ぐ() {
     // Arrange

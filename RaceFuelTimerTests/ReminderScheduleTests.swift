@@ -77,6 +77,18 @@ func 詳細設定の間隔より短い通知終了予定は候補に出さない
     #expect(options.first == 240)
 }
 
+@Test("通知間隔を長くしたとき終了予定は最短の有効値へ寄せる")
+func 通知間隔を長くしたとき終了予定は最短の有効値へ寄せる() {
+    // Arrange
+    let notificationEndMinutes = 30
+
+    // Act
+    let normalizedEnd = EditablePlan.normalizedEnd(notificationEndMinutes, intervalMinutes: 40)
+
+    // Assert
+    #expect(normalizedEnd == 60)
+}
+
 @Test("通知メッセージを通知本文に使う")
 func 通知メッセージを通知本文に使う() throws {
     // Arrange

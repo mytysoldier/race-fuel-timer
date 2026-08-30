@@ -30,7 +30,7 @@ struct EditablePlan: Equatable {
 
     static func normalizedEnd(_ value: Int, intervalMinutes: Int) -> Int {
         let options = notificationEndOptions(intervalMinutes: intervalMinutes)
-        return options.contains(value) ? value : 240
+        return options.contains(value) ? value : options.first ?? 240
     }
 
     static func notificationEndOptions(intervalMinutes: Int) -> [Int] {
@@ -153,7 +153,7 @@ struct ContentView: View {
         }
         .onChange(of: editablePlan.intervalMinutes) { _, _ in
             if !notificationEndOptions.contains(editablePlan.notificationEndMinutes) {
-                editablePlan.notificationEndMinutes = notificationEndOptions.last ?? 240
+                editablePlan.notificationEndMinutes = notificationEndOptions.first ?? 240
             }
         }
         .onChange(of: savedPlan) { _, savedPlan in
