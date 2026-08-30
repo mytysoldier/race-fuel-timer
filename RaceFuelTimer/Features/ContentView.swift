@@ -55,6 +55,9 @@ struct EditablePlan: Equatable {
 }
 
 struct ContentView: View {
+    private static let firstReminderOptions = Array(stride(from: 10, through: 240, by: 10))
+    private static let repeatIntervalOptions = Array(stride(from: 20, through: 240, by: 10))
+
     let onStart: (ReminderPlan, Bool) -> Void
     private let planStore: ReminderPlanStore
 
@@ -238,6 +241,8 @@ struct ContentView: View {
                         firstReminder: $editablePlan.hydrationFirstReminder,
                         repeatInterval: $editablePlan.hydrationRepeatInterval,
                         displayName: $editablePlan.hydrationDisplayName,
+                        defaultFirstReminder: 20,
+                        defaultRepeatInterval: 20,
                         notificationLimitMessage: editablePlan.hydrationIsEnabled
                             ? notificationLimitValidationMessage(for: plan.hydration)
                             : nil,
@@ -250,6 +255,8 @@ struct ContentView: View {
                         firstReminder: $editablePlan.fuelFirstReminder,
                         repeatInterval: $editablePlan.fuelRepeatInterval,
                         displayName: $editablePlan.fuelDisplayName,
+                        defaultFirstReminder: 40,
+                        defaultRepeatInterval: 40,
                         notificationLimitMessage: editablePlan.fuelIsEnabled
                             ? notificationLimitValidationMessage(for: plan.fuel)
                             : nil,
@@ -344,6 +351,7 @@ struct ContentView: View {
                 planStore.save(savedPlan)
             }
             .onAppear {
+                normalizeReminderInputValues()
                 isSafetyInformationPresented = !hasCompletedOnboarding
             }
             .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
@@ -385,6 +393,8 @@ struct ContentView: View {
         firstReminder: Binding<String>,
         repeatInterval: Binding<String>,
         displayName: Binding<String>,
+        defaultFirstReminder: Int,
+        defaultRepeatInterval: Int,
         notificationLimitMessage: String?,
         onDisabled: @escaping () -> Void
     ) -> some View {
@@ -397,31 +407,41 @@ struct ContentView: View {
                             : "オンにすると、この通知の時刻と表示名を入力できます"
                     )
                     .onChange(of: isEnabled.wrappedValue) { _, isEnabled in
-                        guard !isEnabled else { return }
-                        onDisabled()
+                        if isEnabled {
+                            firstReminder.wrappedValue = normalizedReminderValue(
+                                firstReminder.wrappedValue,
+                                options: Self.firstReminderOptions,
+                                fallback: defaultFirstReminder
+                            )
+                            repeatInterval.wrappedValue = normalizedReminderValue(
+                                repeatInterval.wrappedValue,
+                                options: Self.repeatIntervalOptions,
+                                fallback: defaultRepeatInterval
+                            )
+                        } else {
+                            onDisabled()
+                        }
                     }
 
                 if isEnabled.wrappedValue {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("最初の通知（分）")
-                            .font(.subheadline.weight(.medium))
-                        TextField("最初の通知（分）", text: firstReminder)
-                            .keyboardType(.numberPad)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($isEditingField)
-                            .accessibilityLabel("\(title)の最初の通知（分）")
-                            .accessibilityHint("5〜240分の整数で入力します")
+                    Picker("最初の通知", selection: firstReminder) {
+                        ForEach(Self.firstReminderOptions, id: \.self) { minutes in
+                            Text("\(minutes)分後").tag(String(minutes))
+                        }
                     }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("繰り返し間隔（分）")
-                            .font(.subheadline.weight(.medium))
-                        TextField("繰り返し間隔（分）", text: repeatInterval)
-                            .keyboardType(.numberPad)
-                            .textFieldStyle(.roundedBorder)
-                            .focused($isEditingField)
-                            .accessibilityLabel("\(title)の繰り返し間隔（分）")
-                            .accessibilityHint("5〜240分の整数で入力します")
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("\(title)の最初の通知")
+                    .accessibilityHint("最初の通知までの時間を10分単位で選びます")
+
+                    Picker("繰り返し間隔", selection: repeatInterval) {
+                        ForEach(Self.repeatIntervalOptions, id: \.self) { minutes in
+                            Text("\(minutes)分ごと").tag(String(minutes))
+                        }
                     }
+                    .pickerStyle(.menu)
+                    .accessibilityLabel("\(title)の繰り返し間隔")
+                    .accessibilityHint("20分以上の間隔を10分単位で選びます")
+
                     VStack(alignment: .leading, spacing: 4) {
                         Text("通知表示名（任意）")
                             .font(.subheadline.weight(.medium))
@@ -431,7 +451,7 @@ struct ContentView: View {
                             .accessibilityLabel("\(title)の通知表示名（任意）")
                             .accessibilityHint("30文字以内で入力します")
                     }
-                    Text("最初の通知と間隔は 5〜240 分の整数です。")
+                    Text("最初の通知は10分単位、繰り返し間隔は20分以上で選べます。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     if let notificationLimitMessage {
@@ -461,12 +481,16 @@ struct ContentView: View {
     private func applyPreset(for kilometers: Double?) {
         let preset = ReminderPlanPreset.make(for: kilometers)
         editablePlan.hydrationIsEnabled = preset.hydration.isEnabled
-        editablePlan.hydrationFirstReminder = preset.hydration.firstReminderMinutes.map(String.init) ?? ""
-        editablePlan.hydrationRepeatInterval = preset.hydration.repeatIntervalMinutes.map(String.init) ?? ""
+        editablePlan.hydrationFirstReminder = preset.hydration.firstReminderMinutes.map(String.init) ?? "20"
+        editablePlan.hydrationRepeatInterval = preset.hydration.repeatIntervalMinutes.map(String.init) ?? "20"
         editablePlan.hydrationDisplayName = preset.hydration.displayName
         editablePlan.fuelIsEnabled = preset.fuel.isEnabled
-        editablePlan.fuelFirstReminder = preset.fuel.firstReminderMinutes.map(String.init) ?? ""
-        editablePlan.fuelRepeatInterval = preset.fuel.repeatIntervalMinutes.map(String.init) ?? ""
+        editablePlan.fuelFirstReminder = preset.fuel.isEnabled
+            ? preset.fuel.firstReminderMinutes.map(String.init) ?? "40"
+            : ""
+        editablePlan.fuelRepeatInterval = preset.fuel.isEnabled
+            ? preset.fuel.repeatIntervalMinutes.map(String.init) ?? "40"
+            : ""
         editablePlan.fuelDisplayName = preset.fuel.displayName
     }
 
@@ -476,6 +500,43 @@ struct ContentView: View {
 
     private func apply(preset: ReminderPlan) {
         editablePlan = .init(preset: preset)
+        normalizeReminderInputValues()
+    }
+
+    private func normalizeReminderInputValues() {
+        if editablePlan.hydrationIsEnabled {
+            editablePlan.hydrationFirstReminder = normalizedReminderValue(
+                editablePlan.hydrationFirstReminder,
+                options: Self.firstReminderOptions,
+                fallback: 20
+            )
+            editablePlan.hydrationRepeatInterval = normalizedReminderValue(
+                editablePlan.hydrationRepeatInterval,
+                options: Self.repeatIntervalOptions,
+                fallback: 20
+            )
+        }
+
+        if editablePlan.fuelIsEnabled {
+            editablePlan.fuelFirstReminder = normalizedReminderValue(
+                editablePlan.fuelFirstReminder,
+                options: Self.firstReminderOptions,
+                fallback: 40
+            )
+            editablePlan.fuelRepeatInterval = normalizedReminderValue(
+                editablePlan.fuelRepeatInterval,
+                options: Self.repeatIntervalOptions,
+                fallback: 40
+            )
+        }
+    }
+
+    private func normalizedReminderValue(_ value: String, options: [Int], fallback: Int) -> String {
+        guard let minutes = Int(value), options.contains(minutes) else {
+            return String(fallback)
+        }
+
+        return value
     }
 
     private func startPendingPlan(requestingNotificationPermission: Bool) {
