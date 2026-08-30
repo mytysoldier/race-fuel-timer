@@ -7,19 +7,25 @@ struct SavedPlan: Equatable {
     let selectedDistanceKilometers: Double
     let hydration: ReminderSetting
     let fuel: ReminderSetting
+    let notificationEndMinutes: Int
 
     init?(
         version: Int = Self.currentVersion,
         selectedDistanceKilometers: Double,
         hydration: ReminderSetting,
-        fuel: ReminderSetting
+        fuel: ReminderSetting,
+        notificationEndMinutes: Int = 240
     ) {
         guard version == Self.currentVersion,
               selectedDistanceKilometers.isFinite,
               (0.1...200).contains(selectedDistanceKilometers),
               Self.isValidStoredSetting(hydration),
               Self.isValidStoredSetting(fuel),
-              ReminderPlan(hydration: hydration, fuel: fuel).validationErrors().isEmpty
+              ReminderPlan(
+                  hydration: hydration,
+                  fuel: fuel,
+                  notificationEndMinutes: notificationEndMinutes
+              ).validationErrors().isEmpty
         else {
             return nil
         }
@@ -28,6 +34,7 @@ struct SavedPlan: Equatable {
         self.selectedDistanceKilometers = selectedDistanceKilometers
         self.hydration = hydration
         self.fuel = fuel
+        self.notificationEndMinutes = notificationEndMinutes
     }
 
     private static func isValidStoredSetting(_ setting: ReminderSetting) -> Bool {
@@ -95,12 +102,14 @@ private struct SavedPlanPayload: Codable {
     let selectedDistanceKilometers: Double
     let hydration: ReminderSettingPayload
     let fuel: ReminderSettingPayload
+    let notificationEndMinutes: Int?
 
     init(savedPlan: SavedPlan) {
         version = savedPlan.version
         selectedDistanceKilometers = savedPlan.selectedDistanceKilometers
         hydration = .init(setting: savedPlan.hydration)
         fuel = .init(setting: savedPlan.fuel)
+        notificationEndMinutes = savedPlan.notificationEndMinutes
     }
 
     var savedPlan: SavedPlan? {
@@ -109,7 +118,8 @@ private struct SavedPlanPayload: Codable {
             version: version,
             selectedDistanceKilometers: selectedDistanceKilometers,
             hydration: hydration.reminderSetting,
-            fuel: fuel.reminderSetting
+            fuel: fuel.reminderSetting,
+            notificationEndMinutes: notificationEndMinutes ?? 240
         )
     }
 }

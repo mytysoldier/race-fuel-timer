@@ -15,6 +15,8 @@ extension ReminderPlanValidationError {
             "\(kind.defaultDisplayName)の繰り返し間隔は 5〜240 分にしてください。"
         case let .displayNameTooLong(kind):
             "\(kind.defaultDisplayName)の通知表示名は 30 文字以内にしてください。"
+        case .notificationEndOutOfRange:
+            "通知を止める予定を30分〜24時間の範囲で選んでください。"
         case .tooManyScheduledReminders:
             "通知は1回のセッションで60件までです。間隔を長くしてください。"
         }
