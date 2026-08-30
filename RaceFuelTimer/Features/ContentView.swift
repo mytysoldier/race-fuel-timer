@@ -68,8 +68,11 @@ struct ContentView: View {
     @State private var isResetConfirmationPresented = false
     @State private var isSafetyInformationPresented = false
     @State private var isPrivacyInformationPresented = false
+    @State private var isNotificationSettingsPresented = false
     @State private var pendingPlan: ReminderPlan?
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    @AppStorage("hasChosenNotificationUsage") private var hasChosenNotificationUsage = false
+    @AppStorage("shouldUseNotifications") private var shouldUseNotifications = true
 
     init(
         onStart: @escaping (ReminderPlan, Bool) -> Void = { _, _ in },
@@ -194,121 +197,69 @@ struct ContentView: View {
 
     var body: some View {
         ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("ランニング補給タイマー")
-                            .font(.largeTitle.bold())
-                        Text("走り出す前に、通知の計画を確認しましょう。")
-                            .foregroundStyle(.secondary)
-                        Text("通知を使わなくても、画面上の経過時間と次の予定は確認できます。")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                        Button {
-                            isSafetyInformationPresented = true
-                        } label: {
-                            Label("安全に利用するための注意", systemImage: "heart.text.square")
-                                .font(.footnote.weight(.medium))
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.tint)
-                        .accessibilityHint("安全上の注意を開きます")
-                    }
-
-                    GroupBox("予定距離") {
-                        VStack(alignment: .leading, spacing: 12) {
-                            Picker("予定距離", selection: $editablePlan.selectedDistance) {
-                                ForEach(PlannedDistance.allCases) { distance in
-                                    Text(distance.title).tag(distance)
-                                }
-                            }
-                            .pickerStyle(.menu)
-                            .accessibilityHint("距離に合わせて通知の初期設定を選びます")
-
-                            if editablePlan.selectedDistance == .custom {
-                                TextField("距離（km）", text: $editablePlan.customDistance)
-                                    .keyboardType(.decimalPad)
-                                    .textFieldStyle(.roundedBorder)
-                                    .focused($isEditingField)
-                                    .accessibilityLabel("カスタム距離（km）")
-                                    .accessibilityHint("0.1〜200 kmの範囲で入力します")
-                            }
-                        }
-                    }
-
-                    reminderSection(
-                        title: "給水",
-                        isEnabled: $editablePlan.hydrationIsEnabled,
-                        firstReminder: $editablePlan.hydrationFirstReminder,
-                        repeatInterval: $editablePlan.hydrationRepeatInterval,
-                        displayName: $editablePlan.hydrationDisplayName,
-                        defaultFirstReminder: 20,
-                        defaultRepeatInterval: 20,
-                        notificationLimitMessage: editablePlan.hydrationIsEnabled
-                            ? notificationLimitValidationMessage(for: plan.hydration)
-                            : nil,
-                        onDisabled: { editablePlan.clearHydrationReminderInputs() }
-                    )
-
-                    reminderSection(
-                        title: "補給・ジェル",
-                        isEnabled: $editablePlan.fuelIsEnabled,
-                        firstReminder: $editablePlan.fuelFirstReminder,
-                        repeatInterval: $editablePlan.fuelRepeatInterval,
-                        displayName: $editablePlan.fuelDisplayName,
-                        defaultFirstReminder: 40,
-                        defaultRepeatInterval: 40,
-                        notificationLimitMessage: editablePlan.fuelIsEnabled
-                            ? notificationLimitValidationMessage(for: plan.fuel)
-                            : nil,
-                        onDisabled: { editablePlan.clearFuelReminderInputs() }
-                    )
-
-                    if didRecoverSavedPlan {
-                        Label(
-                            "保存した設定を安全な初期値へ戻しました。予定距離と通知設定を確認してから開始してください。",
-                            systemImage: "exclamationmark.triangle.fill"
-                        )
-                        .foregroundStyle(.orange)
-                        .accessibilityElement(children: .combine)
-                    }
-
-                    if !validationMessages.isEmpty {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Label(
-                                "開始するには、通知設定の入力項目を確認してください。",
-                                systemImage: "info.circle"
-                            )
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            ForEach(supplementalValidationMessages, id: \.self) { message in
-                                Label(message, systemImage: "exclamationmark.triangle")
-                                    .font(.footnote)
-                                    .foregroundStyle(.orange)
-                            }
-                        }
-                        .accessibilityElement(children: .combine)
-                        .accessibilityLabel("開始できない設定があります。\(validationMessages.joined(separator: "、"))")
-                        .accessibilityHint("未入力または入力形式を修正すると開始できます")
-                    }
-
-                    Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ランニング補給タイマー")
+                        .font(.largeTitle.bold())
+                    Text("通知の予定を確認して、すぐスタートできます。")
+                        .foregroundStyle(.secondary)
+                    Text("通知を使わなくても、画面上の経過時間と次の予定は確認できます。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-
-                    Divider()
-
-                    Button("設定を初期化", role: .destructive) {
-                        isResetConfirmationPresented = true
-                    }
-                    .buttonStyle(.bordered)
                 }
-                .padding()
+
+                reminderSummarySection(
+                    title: "給水",
+                    isEnabled: $editablePlan.hydrationIsEnabled,
+                    firstReminder: $editablePlan.hydrationFirstReminder,
+                    repeatInterval: $editablePlan.hydrationRepeatInterval,
+                    defaultFirstReminder: 20,
+                    defaultRepeatInterval: 20,
+                    onDisabled: { editablePlan.clearHydrationReminderInputs() }
+                )
+
+                reminderSummarySection(
+                    title: "補給・ジェル",
+                    isEnabled: $editablePlan.fuelIsEnabled,
+                    firstReminder: $editablePlan.fuelFirstReminder,
+                    repeatInterval: $editablePlan.fuelRepeatInterval,
+                    defaultFirstReminder: 40,
+                    defaultRepeatInterval: 40,
+                    onDisabled: { editablePlan.clearFuelReminderInputs() }
+                )
+
+                Button("通知を調整") {
+                    isNotificationSettingsPresented = true
+                }
+                .buttonStyle(.bordered)
+                .accessibilityHint("予定距離と通知のタイミングを変更します")
+
+                if didRecoverSavedPlan {
+                    Label(
+                        "保存した設定を安全な初期値へ戻しました。必要に応じて通知を調整してください。",
+                        systemImage: "exclamationmark.triangle.fill"
+                    )
+                    .foregroundStyle(.orange)
+                    .accessibilityElement(children: .combine)
+                }
+
+                if !validationMessages.isEmpty {
+                    Label("通知設定を確認してください。", systemImage: "info.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.orange)
+                        .accessibilityHint("通知を調整から設定を修正すると開始できます")
+                }
+
+                Text("通知は目安であり、補給量を指示するものではありません。体調、製品表示、専門家の助言を優先し、体調不良時は運動を中止してください。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
+            .padding()
+        }
             .scrollDismissesKeyboard(.interactively)
             .safeAreaInset(edge: .bottom) {
                 Button("このプランで開始") {
-                    pendingPlan = plan
-                    isNotificationExplanationPresented = true
+                    startPlan()
                 }
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
@@ -354,20 +305,15 @@ struct ContentView: View {
                 normalizeReminderInputValues()
                 isSafetyInformationPresented = !hasCompletedOnboarding
             }
-            .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
-                Button("初期化", role: .destructive) {
-                    planStore.reset()
-                    apply(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
-                    didRecoverSavedPlan = false
-                }
-            } message: {
-                Text("保存した距離と給水・補給の設定を初期値へ戻します。")
-            }
             .alert("通知を使って開始しますか？", isPresented: $isNotificationExplanationPresented) {
                 Button("通知なしで開始", role: .cancel) {
+                    hasChosenNotificationUsage = true
+                    shouldUseNotifications = false
                     startPendingPlan(requestingNotificationPermission: false)
                 }
                 Button("通知を許可") {
+                    hasChosenNotificationUsage = true
+                    shouldUseNotifications = true
                     startPendingPlan(requestingNotificationPermission: true)
                 }
             } message: {
@@ -385,6 +331,165 @@ struct ContentView: View {
             .sheet(isPresented: $isPrivacyInformationPresented) {
                 PrivacyInformationView()
             }
+            .sheet(isPresented: $isNotificationSettingsPresented) {
+                NavigationStack {
+                    notificationSettingsView
+                        .navigationTitle("通知を調整")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("完了") {
+                                    isNotificationSettingsPresented = false
+                                }
+                            }
+                        }
+                }
+            }
+    }
+
+    private var notificationSettingsView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                GroupBox("予定距離") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Picker("予定距離", selection: $editablePlan.selectedDistance) {
+                            ForEach(PlannedDistance.allCases) { distance in
+                                Text(distance.title).tag(distance)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .accessibilityHint("距離に合わせて通知の初期設定を選びます")
+
+                        if editablePlan.selectedDistance == .custom {
+                            TextField("距離（km）", text: $editablePlan.customDistance)
+                                .keyboardType(.decimalPad)
+                                .textFieldStyle(.roundedBorder)
+                                .focused($isEditingField)
+                                .accessibilityLabel("カスタム距離（km）")
+                                .accessibilityHint("0.1〜200 kmの範囲で入力します")
+                        }
+                    }
+                }
+
+                reminderSection(
+                    title: "給水",
+                    isEnabled: $editablePlan.hydrationIsEnabled,
+                    firstReminder: $editablePlan.hydrationFirstReminder,
+                    repeatInterval: $editablePlan.hydrationRepeatInterval,
+                    displayName: $editablePlan.hydrationDisplayName,
+                    defaultFirstReminder: 20,
+                    defaultRepeatInterval: 20,
+                    notificationLimitMessage: editablePlan.hydrationIsEnabled
+                        ? notificationLimitValidationMessage(for: plan.hydration)
+                        : nil,
+                    onDisabled: { editablePlan.clearHydrationReminderInputs() }
+                )
+
+                reminderSection(
+                    title: "補給・ジェル",
+                    isEnabled: $editablePlan.fuelIsEnabled,
+                    firstReminder: $editablePlan.fuelFirstReminder,
+                    repeatInterval: $editablePlan.fuelRepeatInterval,
+                    displayName: $editablePlan.fuelDisplayName,
+                    defaultFirstReminder: 40,
+                    defaultRepeatInterval: 40,
+                    notificationLimitMessage: editablePlan.fuelIsEnabled
+                        ? notificationLimitValidationMessage(for: plan.fuel)
+                        : nil,
+                    onDisabled: { editablePlan.clearFuelReminderInputs() }
+                )
+
+                if !validationMessages.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label("開始できない設定があります。", systemImage: "info.circle")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                        ForEach(supplementalValidationMessages, id: \.self) { message in
+                            Label(message, systemImage: "exclamationmark.triangle")
+                                .font(.footnote)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                }
+
+                GroupBox("通知") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(
+                            "通知を使う",
+                            isOn: Binding(
+                                get: { shouldUseNotifications },
+                                set: { isEnabled in
+                                    shouldUseNotifications = isEnabled
+                                    hasChosenNotificationUsage = true
+                                }
+                            )
+                        )
+                        Text("オフにすると、次回は通知を出さずに開始します。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Divider()
+
+                Button("設定を初期化", role: .destructive) {
+                    isResetConfirmationPresented = true
+                }
+                .buttonStyle(.bordered)
+            }
+            .padding()
+        }
+        .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
+            Button("初期化", role: .destructive) {
+                planStore.reset()
+                apply(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
+                didRecoverSavedPlan = false
+            }
+        } message: {
+            Text("保存した距離と給水・補給の設定を初期値へ戻します。")
+        }
+    }
+
+    private func reminderSummarySection(
+        title: String,
+        isEnabled: Binding<Bool>,
+        firstReminder: Binding<String>,
+        repeatInterval: Binding<String>,
+        defaultFirstReminder: Int,
+        defaultRepeatInterval: Int,
+        onDisabled: @escaping () -> Void
+    ) -> some View {
+        GroupBox(title) {
+            VStack(alignment: .leading, spacing: 12) {
+                Toggle("\(title)を通知する", isOn: isEnabled)
+                    .onChange(of: isEnabled.wrappedValue) { _, isEnabled in
+                        if isEnabled {
+                            firstReminder.wrappedValue = normalizedReminderValue(
+                                firstReminder.wrappedValue,
+                                options: Self.firstReminderOptions,
+                                fallback: defaultFirstReminder
+                            )
+                            repeatInterval.wrappedValue = normalizedReminderValue(
+                                repeatInterval.wrappedValue,
+                                options: Self.repeatIntervalOptions,
+                                fallback: defaultRepeatInterval
+                            )
+                        } else {
+                            onDisabled()
+                        }
+                    }
+
+                if isEnabled.wrappedValue,
+                   let firstReminderMinutes = Int(firstReminder.wrappedValue),
+                   let repeatIntervalMinutes = Int(repeatInterval.wrappedValue) {
+                    Text("スタートから\(firstReminderMinutes)分後、その後\(repeatIntervalMinutes)分ごと")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Text("通知しない")
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
     }
 
     private func reminderSection(
@@ -555,6 +660,15 @@ struct ContentView: View {
         guard let pendingPlan else { return }
         self.pendingPlan = nil
         onStart(pendingPlan, requestingNotificationPermission)
+    }
+
+    private func startPlan() {
+        if hasChosenNotificationUsage {
+            onStart(plan, shouldUseNotifications)
+        } else {
+            pendingPlan = plan
+            isNotificationExplanationPresented = true
+        }
     }
 
 }
