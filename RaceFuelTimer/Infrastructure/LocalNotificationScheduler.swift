@@ -138,20 +138,10 @@ final class ForegroundNotificationDelegate: NSObject, UNUserNotificationCenterDe
 
 extension ScheduledReminder {
     var notificationTitle: String {
-        if kinds == [.hydration] {
-            "給水の時間です"
-        } else if kinds == [.fuel] {
-            "補給・ジェルの時間です"
-        } else {
-            "給水・補給の時間です"
-        }
+        "ランニング補給タイマー"
     }
 
     var notificationBody: String {
-        let names = kinds
-            .sorted { $0.rawValue < $1.rawValue }
-            .map { displayNames[$0] ?? $0.defaultDisplayName }
-            .joined(separator: "・")
-        return "\(names)の予定です。体調や製品表示を優先してください。"
+        displayNames[.hydration] ?? "補給の時間です"
     }
 }

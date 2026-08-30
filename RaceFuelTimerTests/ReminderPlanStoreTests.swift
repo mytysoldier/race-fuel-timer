@@ -2,15 +2,16 @@ import Foundation
 import Testing
 @testable import RaceFuelTimer
 
-@Test("有効な設定を保存して読み込める")
-func 有効な設定を保存して読み込める() {
+@Test("補給リマインドの設定を保存して読み込める")
+func 補給リマインドの設定を保存して読み込める() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
     let savedPlan = SavedPlan(
-        selectedDistanceKilometers: 21.0975,
-        hydration: .init(isEnabled: true, firstReminderMinutes: 25, repeatIntervalMinutes: 30, displayName: "水分"),
-        fuel: .init(isEnabled: true, firstReminderMinutes: 45, repeatIntervalMinutes: 45, displayName: "ジェル")
+        selectedDistanceKilometers: 10,
+        hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20, displayName: "そろそろ補給"),
+        fuel: .init(isEnabled: false),
+        notificationEndMinutes: 360
     )!
 
     // Act
@@ -21,23 +22,109 @@ func 有効な設定を保存して読み込める() {
     #expect(restoredPlan == savedPlan)
 }
 
-@Test("破損したJSONは保存設定なしへ復旧して削除する")
-func 破損したJSONは保存設定なしへ復旧して削除する() {
+@Test("通知終了予定がない旧形式の保存設定は4時間後を初期値にする")
+func 通知終了予定がない旧形式の保存設定は4時間後を初期値にする() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
-    defaults.set(Data("{not-json}".utf8), forKey: ReminderPlanStore.storageKey)
+    defaults.set(
+        Data(
+            """
+            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":20,"repeatIntervalMinutes":20,"displayName":"補給の時間です"},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
+            """.utf8
+        ),
+        forKey: ReminderPlanStore.storageKey
+    )
 
     // Act
     let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == nil)
-    #expect(defaults.data(forKey: ReminderPlanStore.storageKey) == nil)
+    #expect(restoredPlan?.notificationEndMinutes == 240)
 }
 
-@Test("破損したJSONからの復旧を画面へ通知できる")
-func 破損したJSONからの復旧を画面へ通知できる() {
+@Test("旧形式の5分通知は10分へ引き上げて引き継ぐ")
+func 旧形式の五分通知は十分へ引き上げて引き継ぐ() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set(
+        Data(
+            """
+            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":5,"repeatIntervalMinutes":5,"displayName":"補給の時間です"},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
+            """.utf8
+        ),
+        forKey: ReminderPlanStore.storageKey
+    )
+
+    // Act
+    let restoredPlan = store.load()
+
+    // Assert
+    #expect(restoredPlan?.hydration.firstReminderMinutes == 10)
+    #expect(restoredPlan?.hydration.repeatIntervalMinutes == 10)
+}
+
+@Test("旧形式の任意の通知間隔は次の10分単位へ引き上げて引き継ぐ")
+func 旧形式の任意の通知間隔は次の十分単位へ引き上げて引き継ぐ() {
+    // Arrange
+    let defaults = makeTestDefaults()
+    let store = ReminderPlanStore(defaults: defaults)
+    defaults.set(
+        Data(
+            """
+            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":15,"repeatIntervalMinutes":235,"displayName":"補給の時間です"},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
+            """.utf8
+        ),
+        forKey: ReminderPlanStore.storageKey
+    )
+
+    // Act
+    let restoredPlan = store.load()
+
+    // Assert
+    #expect(restoredPlan?.hydration.firstReminderMinutes == 20)
+    #expect(restoredPlan?.hydration.repeatIntervalMinutes == 240)
+}
+
+@Test("旧ジェル通知だけの設定を補給リマインドへ引き継ぐ")
+func 旧ジェル通知だけの設定を補給リマインドへ引き継ぐ() {
+    // Arrange
+    let savedPlan = SavedPlan(
+        selectedDistanceKilometers: 10,
+        hydration: .init(isEnabled: false),
+        fuel: .init(isEnabled: true, firstReminderMinutes: 30, repeatIntervalMinutes: 30, displayName: "ジェルを補給")
+    )!
+
+    // Act
+    let editablePlan = EditablePlan(savedPlan: savedPlan)
+
+    // Assert
+    #expect(editablePlan.isReminderEnabled)
+    #expect(editablePlan.intervalMinutes == 30)
+    #expect(editablePlan.notificationMessage == "ジェルを補給")
+}
+
+@Test("通知をオフにした設定でも間隔とメッセージを引き継ぐ")
+func 通知をオフにした設定でも間隔とメッセージを引き継ぐ() {
+    // Arrange
+    let savedPlan = SavedPlan(
+        selectedDistanceKilometers: 10,
+        hydration: .init(isEnabled: false, firstReminderMinutes: 30, repeatIntervalMinutes: 30, displayName: "補給を忘れずに"),
+        fuel: .init(isEnabled: false)
+    )!
+
+    // Act
+    let editablePlan = EditablePlan(savedPlan: savedPlan)
+
+    // Assert
+    #expect(!editablePlan.isReminderEnabled)
+    #expect(editablePlan.intervalMinutes == 30)
+    #expect(editablePlan.notificationMessage == "補給を忘れずに")
+}
+
+@Test("破損した保存設定は削除して初期設定へ復旧する")
+func 破損した保存設定は削除して初期設定へ復旧する() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
@@ -49,55 +136,11 @@ func 破損したJSONからの復旧を画面へ通知できる() {
     // Assert
     #expect(loadResult.plan == nil)
     #expect(loadResult.didRecover)
+    #expect(defaults.data(forKey: ReminderPlanStore.storageKey) == nil)
 }
 
-@Test("Data以外の保存値からの復旧を画面へ通知できる")
-func Data以外の保存値からの復旧を画面へ通知できる() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-    defaults.set("legacy-format", forKey: ReminderPlanStore.storageKey)
-
-    // Act
-    let loadResult = store.loadWithRecoveryStatus()
-
-    // Assert
-    #expect(loadResult.plan == nil)
-    #expect(loadResult.didRecover)
-    #expect(defaults.object(forKey: ReminderPlanStore.storageKey) == nil)
-}
-
-@Test("保存設定がない初回起動では保存値を返さず復旧案内を表示しない")
-func 保存設定がない初回起動では保存値を返さず復旧案内を表示しない() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-
-    // Act
-    let loadResult = store.loadWithRecoveryStatus()
-
-    // Assert
-    #expect(loadResult.plan == nil)
-    #expect(!loadResult.didRecover)
-}
-
-@Test("未保存時の編集用プリセットは通知時刻と間隔を未入力にする")
-func 未保存時の編集用プリセットは通知時刻と間隔を未入力にする() {
-    // Arrange
-    let preset = ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers)
-
-    // Act
-    let editablePlan = EditablePlan(preset: preset)
-
-    // Assert
-    #expect(editablePlan.hydrationIsEnabled)
-    #expect(editablePlan.hydrationFirstReminder.isEmpty)
-    #expect(editablePlan.hydrationRepeatInterval.isEmpty)
-    #expect(!editablePlan.fuelIsEnabled)
-}
-
-@Test("保存した設定がある場合は保存値を読み込む")
-func 保存した設定がある場合は保存値を読み込む() {
+@Test("初期化すると保存設定を削除する")
+func 初期化すると保存設定を削除する() {
     // Arrange
     let defaults = makeTestDefaults()
     let store = ReminderPlanStore(defaults: defaults)
@@ -109,135 +152,10 @@ func 保存した設定がある場合は保存値を読み込む() {
     store.save(savedPlan)
 
     // Act
-    let loadResult = store.loadWithRecoveryStatus()
-
-    // Assert
-    #expect(loadResult.plan == savedPlan)
-    #expect(!loadResult.didRecover)
-}
-
-@Test("範囲外の保存設定は初期設定へフォールバックする")
-func 範囲外の保存設定は初期設定へフォールバックする() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-    defaults.set(
-        Data(
-            """
-            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":4,"repeatIntervalMinutes":20,"displayName":""},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
-            """.utf8
-        ),
-        forKey: ReminderPlanStore.storageKey
-    )
-
-    // Act
-    let restoredPlan = store.load()
-
-    // Assert
-    #expect(restoredPlan == nil)
-}
-
-@Test("無効な通知に残った範囲外の保存設定は初期設定へフォールバックする")
-func 無効な通知に残った範囲外の保存設定は初期設定へフォールバックする() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-    defaults.set(
-        Data(
-            """
-            {"version":1,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":20,"repeatIntervalMinutes":20,"displayName":""},"fuel":{"isEnabled":false,"firstReminderMinutes":0,"repeatIntervalMinutes":999,"displayName":""}}
-            """.utf8
-        ),
-        forKey: ReminderPlanStore.storageKey
-    )
-
-    // Act
-    let restoredPlan = store.load()
-
-    // Assert
-    #expect(restoredPlan == nil)
-}
-
-@Test("通知を無効にすると入力済みの値を初期化する")
-func 通知を無効にすると入力済みの値を初期化する() {
-    // Arrange
-    var editablePlan = EditablePlan(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
-    editablePlan.fuelIsEnabled = false
-    editablePlan.fuelFirstReminder = "0"
-    editablePlan.fuelRepeatInterval = "999"
-    editablePlan.fuelDisplayName = "長い表示名"
-
-    // Act
-    editablePlan.clearFuelReminderInputs()
-
-    // Assert
-    #expect(editablePlan.fuelFirstReminder.isEmpty)
-    #expect(editablePlan.fuelRepeatInterval.isEmpty)
-    #expect(editablePlan.fuelDisplayName.isEmpty)
-}
-
-@Test("旧バージョンの保存設定は初期設定へフォールバックする")
-func 旧バージョンの保存設定は初期設定へフォールバックする() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-    defaults.set(
-        Data(
-            """
-            {"version":0,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":20,"repeatIntervalMinutes":20,"displayName":""},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
-            """.utf8
-        ),
-        forKey: ReminderPlanStore.storageKey
-    )
-
-    // Act
-    let restoredPlan = store.load()
-
-    // Assert
-    #expect(restoredPlan == nil)
-}
-
-@Test("対応していない保存バージョンは削除して初期設定へ復旧する")
-func 対応していない保存バージョンは削除して初期設定へ復旧する() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-    defaults.set(
-        Data(
-            """
-            {"version":2,"selectedDistanceKilometers":10,"hydration":{"isEnabled":true,"firstReminderMinutes":20,"repeatIntervalMinutes":20,"displayName":""},"fuel":{"isEnabled":false,"firstReminderMinutes":null,"repeatIntervalMinutes":null,"displayName":""}}
-            """.utf8
-        ),
-        forKey: ReminderPlanStore.storageKey
-    )
-
-    // Act
-    let loadResult = store.loadWithRecoveryStatus()
-
-    // Assert
-    #expect(loadResult.plan == nil)
-    #expect(loadResult.didRecover)
-    #expect(defaults.object(forKey: ReminderPlanStore.storageKey) == nil)
-}
-
-@Test("初期化すると保存設定を削除して保存値なしを返す")
-func 初期化すると保存設定を削除して保存値なしを返す() {
-    // Arrange
-    let defaults = makeTestDefaults()
-    let store = ReminderPlanStore(defaults: defaults)
-    let savedPlan = SavedPlan(
-        selectedDistanceKilometers: 5,
-        hydration: .init(isEnabled: true, firstReminderMinutes: 30, repeatIntervalMinutes: 30),
-        fuel: .init(isEnabled: false)
-    )!
-    store.save(savedPlan)
-
-    // Act
     store.reset()
-    let restoredPlan = store.load()
 
     // Assert
-    #expect(restoredPlan == nil)
+    #expect(store.load() == nil)
     #expect(defaults.data(forKey: ReminderPlanStore.storageKey) == nil)
 }
 

@@ -45,16 +45,22 @@ struct ReminderSetting: Equatable {
 }
 
 struct ReminderPlan: Equatable {
-    static let maximumSessionMinutes = 12 * 60
     static let maximumScheduledReminders = 60
-    static let allowedReminderMinutes = 5...240
+    static let allowedReminderMinutes = 10...240
+    static let allowedNotificationEndMinutes = 30...1440
 
     let hydration: ReminderSetting
     let fuel: ReminderSetting
+    let notificationEndMinutes: Int
 
-    init(hydration: ReminderSetting, fuel: ReminderSetting) {
+    init(
+        hydration: ReminderSetting,
+        fuel: ReminderSetting,
+        notificationEndMinutes: Int = 240
+    ) {
         self.hydration = hydration
         self.fuel = fuel
+        self.notificationEndMinutes = notificationEndMinutes
     }
 
     func setting(for kind: ReminderKind) -> ReminderSetting {
@@ -68,14 +74,9 @@ struct ReminderPlan: Equatable {
 
     func validationErrors() -> [ReminderPlanValidationError] {
         var errors: [ReminderPlanValidationError] = []
-        let enabledKinds = ReminderKind.allCases.filter { setting(for: $0).isEnabled }
-
-        if enabledKinds.isEmpty {
-            errors.append(.noReminderEnabled)
-        }
-
-        for kind in enabledKinds {
-            let setting = setting(for: kind)
+        if hydration.isEnabled {
+            let kind = ReminderKind.hydration
+            let setting = hydration
 
             if let firstReminderMinutes = setting.firstReminderMinutes {
                 if !Self.allowedReminderMinutes.contains(firstReminderMinutes) {
@@ -95,6 +96,9 @@ struct ReminderPlan: Equatable {
 
             if setting.displayName.trimmingCharacters(in: .whitespacesAndNewlines).count > 30 {
                 errors.append(.displayNameTooLong(kind))
+            }
+            if !Self.allowedNotificationEndMinutes.contains(notificationEndMinutes) {
+                errors.append(.notificationEndOutOfRange)
             }
         }
 
@@ -116,39 +120,25 @@ struct ReminderPlan: Equatable {
     }
 
     private func scheduledRemindersUnchecked() -> [ScheduledReminder] {
-        var kindsByMinute: [Int: Set<ReminderKind>] = [:]
-
-        for kind in ReminderKind.allCases {
-            let setting = setting(for: kind)
-            guard setting.isEnabled,
-                  let firstReminderMinutes = setting.firstReminderMinutes,
-                  let repeatIntervalMinutes = setting.repeatIntervalMinutes
-            else {
-                continue
-            }
-
-            for minute in stride(
-                from: firstReminderMinutes,
-                through: Self.maximumSessionMinutes,
-                by: repeatIntervalMinutes
-            ) {
-                kindsByMinute[minute, default: []].insert(kind)
-            }
+        guard hydration.isEnabled,
+              let firstReminderMinutes = hydration.firstReminderMinutes,
+              let repeatIntervalMinutes = hydration.repeatIntervalMinutes
+        else {
+            return []
         }
 
-        return kindsByMinute
-            .map { minute, kinds in
-                ScheduledReminder(
-                    trigger: .elapsedMinutes(minute),
-                    kinds: kinds,
-                    displayNames: Dictionary(uniqueKeysWithValues: kinds.map { kind in
-                        let displayName = setting(for: kind).displayName
-                            .trimmingCharacters(in: .whitespacesAndNewlines)
-                        return (kind, displayName.isEmpty ? kind.defaultDisplayName : displayName)
-                    })
-                )
-            }
-            .sorted { $0.trigger.minutes < $1.trigger.minutes }
+        let message = hydration.displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return stride(
+            from: firstReminderMinutes,
+            through: notificationEndMinutes,
+            by: repeatIntervalMinutes
+        ).map { minute in
+            ScheduledReminder(
+                trigger: .elapsedMinutes(minute),
+                kinds: [.hydration],
+                displayNames: [.hydration: message.isEmpty ? "補給の時間です" : message]
+            )
+        }
     }
 }
 
@@ -159,6 +149,7 @@ enum ReminderPlanValidationError: Error, Equatable {
     case missingRepeatInterval(ReminderKind)
     case repeatIntervalOutOfRange(ReminderKind)
     case displayNameTooLong(ReminderKind)
+    case notificationEndOutOfRange
     case tooManyScheduledReminders
 }
 
