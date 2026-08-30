@@ -305,15 +305,6 @@ struct ContentView: View {
                 normalizeReminderInputValues()
                 isSafetyInformationPresented = !hasCompletedOnboarding
             }
-            .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
-                Button("初期化", role: .destructive) {
-                    planStore.reset()
-                    apply(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
-                    didRecoverSavedPlan = false
-                }
-            } message: {
-                Text("保存した距離と給水・補給の設定を初期値へ戻します。")
-            }
             .alert("通知を使って開始しますか？", isPresented: $isNotificationExplanationPresented) {
                 Button("通知なしで開始", role: .cancel) {
                     hasChosenNotificationUsage = true
@@ -447,6 +438,15 @@ struct ContentView: View {
                 .buttonStyle(.bordered)
             }
             .padding()
+        }
+        .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
+            Button("初期化", role: .destructive) {
+                planStore.reset()
+                apply(preset: ReminderPlanPreset.make(for: PlannedDistance.tenKilometers.kilometers))
+                didRecoverSavedPlan = false
+            }
+        } message: {
+            Text("保存した距離と給水・補給の設定を初期値へ戻します。")
         }
     }
 
