@@ -421,6 +421,24 @@ struct ContentView: View {
                     }
                 }
 
+                GroupBox("通知") {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Toggle(
+                            "通知を使う",
+                            isOn: Binding(
+                                get: { shouldUseNotifications },
+                                set: { isEnabled in
+                                    shouldUseNotifications = isEnabled
+                                    hasChosenNotificationUsage = true
+                                }
+                            )
+                        )
+                        Text("オフにすると、次回は通知を出さずに開始します。")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 Divider()
 
                 Button("設定を初期化", role: .destructive) {
