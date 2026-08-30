@@ -421,26 +421,41 @@ struct ContentView: View {
                         } else {
                             onDisabled()
                         }
-                    }
+                }
 
                 if isEnabled.wrappedValue {
-                    Picker("最初の通知", selection: firstReminder) {
-                        ForEach(Self.firstReminderOptions, id: \.self) { minutes in
-                            Text("\(minutes)分後").tag(String(minutes))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("最初に知らせるタイミング")
+                            .font(.subheadline.weight(.medium))
+                        Picker("最初に知らせるタイミング", selection: firstReminder) {
+                            ForEach(Self.firstReminderOptions, id: \.self) { minutes in
+                                Text("スタートから\(minutes)分後").tag(String(minutes))
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .accessibilityLabel("\(title)を最初に知らせるタイミング")
+                        .accessibilityHint("スタートしてから最初に知らせる時間を選びます")
                     }
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("\(title)の最初の通知")
-                    .accessibilityHint("最初の通知までの時間を10分単位で選びます")
 
-                    Picker("繰り返し間隔", selection: repeatInterval) {
-                        ForEach(Self.repeatIntervalOptions, id: \.self) { minutes in
-                            Text("\(minutes)分ごと").tag(String(minutes))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("その後の通知間隔")
+                            .font(.subheadline.weight(.medium))
+                        Picker("その後の通知間隔", selection: repeatInterval) {
+                            ForEach(Self.repeatIntervalOptions, id: \.self) { minutes in
+                                Text("以後\(minutes)分ごと").tag(String(minutes))
+                            }
                         }
+                        .pickerStyle(.menu)
+                        .accessibilityLabel("\(title)のその後の通知間隔")
+                        .accessibilityHint("最初の通知の後に知らせる間隔を選びます")
                     }
-                    .pickerStyle(.menu)
-                    .accessibilityLabel("\(title)の繰り返し間隔")
-                    .accessibilityHint("20分以上の間隔を10分単位で選びます")
+
+                    if let firstReminderMinutes = Int(firstReminder.wrappedValue),
+                       let repeatIntervalMinutes = Int(repeatInterval.wrappedValue) {
+                        Text("通知予定：スタートから\(firstReminderMinutes)分後、その後は\(repeatIntervalMinutes)分ごと")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("通知表示名（任意）")
@@ -451,9 +466,6 @@ struct ContentView: View {
                             .accessibilityLabel("\(title)の通知表示名（任意）")
                             .accessibilityHint("30文字以内で入力します")
                     }
-                    Text("最初の通知は10分単位、繰り返し間隔は20分以上で選べます。")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
                     if let notificationLimitMessage {
                         Label(notificationLimitMessage, systemImage: "exclamationmark.triangle")
                             .font(.footnote)
