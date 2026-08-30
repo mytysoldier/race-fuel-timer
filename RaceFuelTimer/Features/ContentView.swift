@@ -8,7 +8,9 @@ struct EditablePlan: Equatable {
     var notificationMessage: String
 
     init(savedPlan: SavedPlan) {
-        let setting = savedPlan.hydration.isEnabled ? savedPlan.hydration : savedPlan.fuel
+        let setting = savedPlan.fuel.isEnabled && !savedPlan.hydration.isEnabled
+            ? savedPlan.fuel
+            : savedPlan.hydration
         isReminderEnabled = setting.isEnabled
         intervalMinutes = Self.normalizedInterval(setting.repeatIntervalMinutes)
         notificationEndMinutes = Self.normalizedEnd(savedPlan.notificationEndMinutes, intervalMinutes: intervalMinutes)

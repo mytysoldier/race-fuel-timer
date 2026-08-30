@@ -105,6 +105,24 @@ func 旧ジェル通知だけの設定を補給リマインドへ引き継ぐ() 
     #expect(editablePlan.notificationMessage == "ジェルを補給")
 }
 
+@Test("通知をオフにした設定でも間隔とメッセージを引き継ぐ")
+func 通知をオフにした設定でも間隔とメッセージを引き継ぐ() {
+    // Arrange
+    let savedPlan = SavedPlan(
+        selectedDistanceKilometers: 10,
+        hydration: .init(isEnabled: false, firstReminderMinutes: 30, repeatIntervalMinutes: 30, displayName: "補給を忘れずに"),
+        fuel: .init(isEnabled: false)
+    )!
+
+    // Act
+    let editablePlan = EditablePlan(savedPlan: savedPlan)
+
+    // Assert
+    #expect(!editablePlan.isReminderEnabled)
+    #expect(editablePlan.intervalMinutes == 30)
+    #expect(editablePlan.notificationMessage == "補給を忘れずに")
+}
+
 @Test("破損した保存設定は削除して初期設定へ復旧する")
 func 破損した保存設定は削除して初期設定へ復旧する() {
     // Arrange
