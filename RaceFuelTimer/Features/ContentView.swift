@@ -46,6 +46,7 @@ private struct NotificationSettingsDraft: Equatable {
     var editablePlan: EditablePlan
     var shouldUseNotifications: Bool
     var hasChosenNotificationUsage: Bool
+    var shouldResetPersistedPlan = false
 }
 
 struct ContentView: View {
@@ -66,6 +67,7 @@ struct ContentView: View {
     @State private var isSafetyInformationPresented = false
     @State private var isPrivacyInformationPresented = false
     @State private var isResetConfirmationPresented = false
+    @State private var shouldSkipNextPlanSave = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasChosenNotificationUsage") private var hasChosenNotificationUsage = false
     @AppStorage("shouldUseNotifications") private var shouldUseNotifications = true
@@ -173,7 +175,11 @@ struct ContentView: View {
             }
         }
         .onChange(of: savedPlan) { _, savedPlan in
-            if let savedPlan { planStore.save(savedPlan) }
+            if shouldSkipNextPlanSave {
+                shouldSkipNextPlanSave = false
+            } else if let savedPlan {
+                planStore.save(savedPlan)
+            }
         }
         .onAppear { isSafetyInformationPresented = !hasCompletedOnboarding }
         .alert("通知を使って開始しますか？", isPresented: $isNotificationExplanationPresented) {
@@ -244,6 +250,7 @@ struct ContentView: View {
         .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
             Button("初期化", role: .destructive) {
                 notificationSettingsDraft.editablePlan = .init()
+                notificationSettingsDraft.shouldResetPersistedPlan = true
             }
         } message: { Text("補給リマインドの設定を初期値へ戻します。") }
     }
@@ -285,6 +292,11 @@ struct ContentView: View {
     }
 
     private func applyNotificationSettings() {
+        let planChanged = editablePlan != notificationSettingsDraft.editablePlan
+        if notificationSettingsDraft.shouldResetPersistedPlan {
+            planStore.reset()
+            shouldSkipNextPlanSave = planChanged
+        }
         editablePlan = notificationSettingsDraft.editablePlan
         shouldUseNotifications = notificationSettingsDraft.shouldUseNotifications
         hasChosenNotificationUsage = notificationSettingsDraft.hasChosenNotificationUsage
