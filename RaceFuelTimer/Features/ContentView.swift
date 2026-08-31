@@ -42,6 +42,12 @@ struct EditablePlan: Equatable {
     }
 }
 
+private struct NotificationSettingsDraft: Equatable {
+    var editablePlan: EditablePlan
+    var shouldUseNotifications: Bool
+    var hasChosenNotificationUsage: Bool
+}
+
 struct ContentView: View {
     private static let quickIntervals = [10, 20, 30, 40]
     private static let quickEndMinutes = [120, 240, 360, 480]
@@ -49,6 +55,11 @@ struct ContentView: View {
     let onStart: (ReminderPlan, Bool) -> Void
     private let planStore: ReminderPlanStore
     @State private var editablePlan: EditablePlan
+    @State private var notificationSettingsDraft = NotificationSettingsDraft(
+        editablePlan: .init(),
+        shouldUseNotifications: true,
+        hasChosenNotificationUsage: false
+    )
     @State private var didRecoverSavedPlan: Bool
     @State private var isNotificationSettingsPresented = false
     @State private var isNotificationExplanationPresented = false
@@ -81,12 +92,15 @@ struct ContentView: View {
     }
 
     private var notificationMessage: String {
-        let message = editablePlan.notificationMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-        return message.isEmpty ? EditablePlan.defaultMessage : message
+        notificationMessage(for: editablePlan)
     }
 
     private var notificationEndOptions: [Int] {
         EditablePlan.notificationEndOptions(intervalMinutes: editablePlan.intervalMinutes)
+    }
+
+    private var draftNotificationEndOptions: [Int] {
+        EditablePlan.notificationEndOptions(intervalMinutes: notificationSettingsDraft.editablePlan.intervalMinutes)
     }
 
     private var quickNotificationEndOptions: [Int] {
@@ -118,7 +132,7 @@ struct ContentView: View {
                             Text("通知しません。タイマーだけを使えます。").font(.footnote).foregroundStyle(.secondary)
                         }
                         Button {
-                            isNotificationSettingsPresented = true
+                            presentNotificationSettings()
                         } label: {
                             Label {
                                 VStack(alignment: .leading, spacing: 2) {
@@ -176,7 +190,14 @@ struct ContentView: View {
         .sheet(isPresented: $isNotificationSettingsPresented) {
             NavigationStack {
                 notificationSettingsView.navigationTitle("通知を調整").navigationBarTitleDisplayMode(.inline)
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完了") { isNotificationSettingsPresented = false } } }
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("キャンセル") { isNotificationSettingsPresented = false }
+                        }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("完了") { applyNotificationSettings() }
+                        }
+                    }
             }
         }
     }
@@ -184,43 +205,54 @@ struct ContentView: View {
     private var notificationSettingsView: some View {
         Form {
             Section("通知のタイミング") {
-                Picker("通知間隔", selection: $editablePlan.intervalMinutes) {
+                Picker("通知間隔", selection: $notificationSettingsDraft.editablePlan.intervalMinutes) {
                     ForEach(Array(stride(from: 10, through: 240, by: 10)), id: \.self) { Text("\($0)分ごと").tag($0) }
                 }
-                Picker("通知を止める予定", selection: $editablePlan.notificationEndMinutes) {
-                    ForEach(notificationEndOptions, id: \.self) { Text("\(formattedDuration($0))後").tag($0) }
+                Picker("通知を止める予定", selection: $notificationSettingsDraft.editablePlan.notificationEndMinutes) {
+                    ForEach(draftNotificationEndOptions, id: \.self) { Text("\(formattedDuration($0))後").tag($0) }
                 }
-                Text(notificationSummary).font(.footnote).foregroundStyle(.secondary)
+                Text(notificationSummary(for: notificationSettingsDraft.editablePlan)).font(.footnote).foregroundStyle(.secondary)
             }
             Section("通知メッセージ") {
-                TextField("補給の時間です", text: $editablePlan.notificationMessage)
-                    .onChange(of: editablePlan.notificationMessage) { _, message in
-                        editablePlan.notificationMessage = String(message.prefix(30))
+                TextField("補給の時間です", text: $notificationSettingsDraft.editablePlan.notificationMessage)
+                    .onChange(of: notificationSettingsDraft.editablePlan.notificationMessage) { _, message in
+                        notificationSettingsDraft.editablePlan.notificationMessage = String(message.prefix(30))
                     }
                 Text("通知に表示する短いメッセージです。").font(.footnote).foregroundStyle(.secondary)
             }
             Section("通知プレビュー") {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("ランニング補給タイマー").font(.subheadline.weight(.semibold))
-                    Text(notificationMessage)
+                    Text(notificationMessage(for: notificationSettingsDraft.editablePlan))
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("通知プレビュー。ランニング補給タイマー。\(notificationMessage)")
+                .accessibilityLabel("通知プレビュー。ランニング補給タイマー。\(notificationMessage(for: notificationSettingsDraft.editablePlan))")
             }
             Section {
-                Toggle("通知を使う", isOn: Binding(get: { shouldUseNotifications }, set: {
-                    shouldUseNotifications = $0
-                    hasChosenNotificationUsage = true
+                Toggle("通知を使う", isOn: Binding(get: { notificationSettingsDraft.shouldUseNotifications }, set: {
+                    notificationSettingsDraft.shouldUseNotifications = $0
+                    notificationSettingsDraft.hasChosenNotificationUsage = true
                 }))
                 Button("設定を初期化", role: .destructive) { isResetConfirmationPresented = true }
             }
         }
+        .onChange(of: notificationSettingsDraft.editablePlan.intervalMinutes) { _, _ in
+            if !draftNotificationEndOptions.contains(notificationSettingsDraft.editablePlan.notificationEndMinutes) {
+                notificationSettingsDraft.editablePlan.notificationEndMinutes = draftNotificationEndOptions.first ?? 240
+            }
+        }
         .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
-            Button("初期化", role: .destructive) { planStore.reset(); editablePlan = .init(); didRecoverSavedPlan = false }
+            Button("初期化", role: .destructive) {
+                notificationSettingsDraft.editablePlan = .init()
+            }
         } message: { Text("補給リマインドの設定を初期値へ戻します。") }
     }
 
     private var notificationSummary: String {
+        notificationSummary(for: editablePlan)
+    }
+
+    private func notificationSummary(for editablePlan: EditablePlan) -> String {
         "開始\(editablePlan.intervalMinutes)分後から\(editablePlan.intervalMinutes)分ごと。\(formattedDuration(editablePlan.notificationEndMinutes))後に通知を止めます。"
     }
 
@@ -242,6 +274,28 @@ struct ContentView: View {
 
     private func selectInterval(_ minutes: Int) { editablePlan.intervalMinutes = minutes }
     private func selectNotificationEnd(_ minutes: Int) { editablePlan.notificationEndMinutes = minutes }
+
+    private func presentNotificationSettings() {
+        notificationSettingsDraft = .init(
+            editablePlan: editablePlan,
+            shouldUseNotifications: shouldUseNotifications,
+            hasChosenNotificationUsage: hasChosenNotificationUsage
+        )
+        isNotificationSettingsPresented = true
+    }
+
+    private func applyNotificationSettings() {
+        editablePlan = notificationSettingsDraft.editablePlan
+        shouldUseNotifications = notificationSettingsDraft.shouldUseNotifications
+        hasChosenNotificationUsage = notificationSettingsDraft.hasChosenNotificationUsage
+        didRecoverSavedPlan = false
+        isNotificationSettingsPresented = false
+    }
+
+    private func notificationMessage(for editablePlan: EditablePlan) -> String {
+        let message = editablePlan.notificationMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        return message.isEmpty ? EditablePlan.defaultMessage : message
+    }
 
     private func formattedDuration(_ minutes: Int) -> String {
         let hours = minutes / 60
