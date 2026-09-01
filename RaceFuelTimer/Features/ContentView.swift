@@ -293,7 +293,9 @@ struct ContentView: View {
 
     private func applyNotificationSettings() {
         let planChanged = editablePlan != notificationSettingsDraft.editablePlan
-        if notificationSettingsDraft.shouldResetPersistedPlan {
+        let shouldResetPersistedPlan = notificationSettingsDraft.shouldResetPersistedPlan
+            && notificationSettingsDraft.editablePlan == .init()
+        if shouldResetPersistedPlan {
             planStore.reset()
             shouldSkipNextPlanSave = planChanged
         }
