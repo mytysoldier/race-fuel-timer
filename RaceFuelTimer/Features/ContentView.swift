@@ -81,12 +81,16 @@ struct ContentView: View {
     }
 
     private var plan: ReminderPlan {
+        plan(for: editablePlan)
+    }
+
+    private func plan(for editablePlan: EditablePlan) -> ReminderPlan {
         ReminderPlan(
             hydration: .init(
                 isEnabled: editablePlan.isReminderEnabled,
                 firstReminderMinutes: editablePlan.intervalMinutes,
                 repeatIntervalMinutes: editablePlan.intervalMinutes,
-                displayName: notificationMessage
+                displayName: notificationMessage(for: editablePlan)
             ),
             fuel: .init(isEnabled: false),
             notificationEndMinutes: editablePlan.notificationEndMinutes
@@ -292,12 +296,12 @@ struct ContentView: View {
     }
 
     private func applyNotificationSettings() {
-        let planChanged = editablePlan != notificationSettingsDraft.editablePlan
+        let persistedPlanChanged = plan != plan(for: notificationSettingsDraft.editablePlan)
         let shouldResetPersistedPlan = notificationSettingsDraft.shouldResetPersistedPlan
             && notificationSettingsDraft.editablePlan == .init()
         if shouldResetPersistedPlan {
             planStore.reset()
-            shouldSkipNextPlanSave = planChanged
+            shouldSkipNextPlanSave = persistedPlanChanged
         }
         editablePlan = notificationSettingsDraft.editablePlan
         shouldUseNotifications = notificationSettingsDraft.shouldUseNotifications
