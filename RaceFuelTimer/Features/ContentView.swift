@@ -239,10 +239,13 @@ struct ContentView: View {
                 .accessibilityLabel("通知プレビュー。ランニング補給タイマー。\(notificationMessage(for: notificationSettingsDraft.editablePlan))")
             }
             Section {
-                Toggle("通知を使う", isOn: Binding(get: { notificationSettingsDraft.shouldUseNotifications }, set: {
+                Toggle("画面外でも補給を知らせる", isOn: Binding(get: { notificationSettingsDraft.shouldUseNotifications }, set: {
                     notificationSettingsDraft.shouldUseNotifications = $0
                     notificationSettingsDraft.hasChosenNotificationUsage = true
                 }))
+                Text("オンにすると、ロック中や他のアプリ使用中にも通知を表示します。オフでもタイマー画面で次の予定を確認できます。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
                 Button("設定を初期化", role: .destructive) { isResetConfirmationPresented = true }
             }
         }
