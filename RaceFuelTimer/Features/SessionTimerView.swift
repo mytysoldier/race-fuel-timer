@@ -1,8 +1,9 @@
 import SwiftUI
 
 struct SessionTimerView: View {
-    @Binding var session: Session
+    let session: Session
     let notificationAuthorization: LocalNotificationAuthorization
+    let onSessionChange: (Session) -> Void
     let onPause: () -> Void
     let onResume: (Session) -> Void
     let onEnd: (Session) -> Void
@@ -45,12 +46,15 @@ struct SessionTimerView: View {
                     Spacer(minLength: 12)
 
                     Button(session.state == .paused ? "再開" : "一時停止") {
+                        var updatedSession = session
                         if session.state == .paused {
-                            if session.resume(at: .now) {
-                                onResume(session)
+                            if updatedSession.resume(at: .now) {
+                                onSessionChange(updatedSession)
+                                onResume(updatedSession)
                             }
                         } else {
-                            session.pause(at: .now)
+                            updatedSession.pause(at: .now)
+                            onSessionChange(updatedSession)
                             onPause()
                         }
                     }
@@ -76,8 +80,9 @@ struct SessionTimerView: View {
         .alert("セッションを終了しますか？", isPresented: $isEndConfirmationPresented) {
             Button("キャンセル", role: .cancel) {}
             Button("終了", role: .destructive) {
-                session.end(at: .now)
-                onEnd(session)
+                var endedSession = session
+                endedSession.end(at: .now)
+                onEnd(endedSession)
             }
         } message: {
             Text("タイマーを終了します。この操作は取り消せません。")

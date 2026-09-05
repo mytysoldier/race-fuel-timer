@@ -11,11 +11,11 @@ struct RaceFuelTimerApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                // switch でも分岐できるが、Optional の Binding<Session> を安全に取り出す目的が明確な if let を使う。
-                if let sessionBinding = Binding($session) {
+                if let currentSession = session {
                     SessionTimerView(
-                        session: sessionBinding,
+                        session: currentSession,
                         notificationAuthorization: notificationScheduler.authorization,
+                        onSessionChange: { session = $0 },
                         onPause: {
                             notificationScheduler.cancelScheduledReminders()
                         },
