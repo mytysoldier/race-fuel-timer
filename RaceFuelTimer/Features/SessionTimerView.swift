@@ -38,7 +38,7 @@ struct SessionTimerView: View {
 
                     notificationStatusSection
 
-                    Text("画面ロック・アプリ切替中も経過時間は復帰時に再計算します。アプリを終了した場合、実行中セッションは復元されません。")
+                    Text("画面のロックを解除したときや、別のアプリからこのアプリに切り替えたときも、経過時間は正しく表示されます。アプリを完全に終了すると、このランのタイマーは続きから再開できません。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
