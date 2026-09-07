@@ -14,7 +14,7 @@ struct PrivacyInformationView: View {
                 }
 
                 Section("サポート") {
-                    Link("GitHub Issuesで問い合わせる", destination: URL(string: "https://github.com/mytysoldier/race-fuel-timer/issues")!)
+                    Link("サポートページを開く", destination: URL(string: "https://mytysoldier.github.io/app-privacy/support/race-fuel-timer/")!)
                 }
 
                 Section("ライセンス") {
