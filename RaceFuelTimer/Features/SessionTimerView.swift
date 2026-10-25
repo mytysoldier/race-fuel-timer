@@ -4,6 +4,7 @@ struct SessionTimerView: View {
     let session: Session
     let notificationAuthorization: LocalNotificationAuthorization
     let onSessionChange: (Session) -> Void
+    let onRecord: (String, IntakeResult) -> Void
     let onPause: () -> Void
     let onResume: (Session) -> Void
     let onEnd: (Session) -> Void
@@ -35,6 +36,8 @@ struct SessionTimerView: View {
                     }
 
                     nextReminderSection(nextReminders, at: context.date)
+
+                    recordingSection(at: context.date)
 
                     notificationStatusSection
 
@@ -69,7 +72,7 @@ struct SessionTimerView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.large)
                     .frame(maxWidth: .infinity)
-                    .accessibilityHint("タイマーを終了し、設定画面へ戻ります。終了後は再開できません")
+                    .accessibilityHint("タイマーを終了し、今回のサマリを表示します。終了後は再開できません")
                 }
             }
             .contentMargins(.horizontal, 16, for: .scrollContent)
@@ -86,6 +89,37 @@ struct SessionTimerView: View {
             }
         } message: {
             Text("タイマーを終了します。この操作は取り消せません。")
+        }
+    }
+
+    @ViewBuilder
+    private func recordingSection(at date: Date) -> some View {
+        GroupBox("補給の記録") {
+            if let target = session.recordingTarget(at: date) {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("記録対象：開始から \(target.trigger.minutes) 分の予定")
+                        .font(.headline)
+                    Text(target.trigger.minutes <= session.elapsedMinutes(at: date)
+                         ? "到来済みで未記録の予定です。" : "次回の予定を先に記録できます。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    HStack {
+                        Button("摂った") { onRecord(target.identifier, .taken) }
+                            .buttonStyle(.borderedProminent)
+                        Button("スキップ") { onRecord(target.identifier, .skipped) }
+                            .buttonStyle(.bordered)
+                    }
+                    .controlSize(.large)
+                    .disabled(session.state != .running)
+                    if session.state == .paused {
+                        Text("記録するにはタイマーを再開してください。")
+                            .font(.footnote)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                Text("記録できる予定はありません。")
+                    .foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -113,9 +147,9 @@ struct SessionTimerView: View {
     private func nextReminderSection(_ reminders: [(ReminderKind, ScheduledReminder)], at date: Date) -> some View {
         GroupBox("次の予定") {
             if reminders.isEmpty {
-                Text("このセッションに次の給水・補給予定はありません。設定した予定をすべて過ぎたか、通知を設定していません。")
+                Text("未記録の次回予定はありません。予定をすべて過ぎたか、記録済み、または予定を設定していません。")
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel("次の予定はありません。設定した予定をすべて過ぎたか、通知を設定していません")
+                    .accessibilityLabel("未記録の次回予定はありません。予定をすべて過ぎたか、記録済み、または予定を設定していません")
             } else {
                 VStack(alignment: .leading, spacing: 12) {
                     ForEach(reminders, id: \.0) { kind, reminder in
@@ -144,5 +178,34 @@ struct SessionTimerView: View {
 
     private func formattedTime(_ seconds: TimeInterval) -> String {
         Duration.seconds(seconds).formatted(.time(pattern: .minuteSecond))
+    }
+}
+
+struct SessionSummaryView: View {
+    let summary: SessionSummary
+    let onDone: () -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("今回のラン").font(.title.bold())
+                LabeledContent("経過時間", value: Duration.seconds(summary.elapsedSeconds).formatted(.time(pattern: .hourMinuteSecond)))
+                LabeledContent("終了までに到来した予定", value: "\(summary.dueCount)回")
+                LabeledContent("摂った", value: "\(summary.takenCount)回")
+                LabeledContent("スキップ", value: "\(summary.skippedCount)回")
+                LabeledContent("到来済み・未記録", value: "\(summary.unrecordedCount)回")
+                if summary.earlyRecordCount > 0 {
+                    Text("摂った・スキップには、終了時点で未到来の予定への先行記録\(summary.earlyRecordCount)回を含みます。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Text("未到来の予定は未記録に含めません。この記録は今回のセッション内だけで保持され、履歴として保存されません。")
+                    .font(.footnote).foregroundStyle(.secondary)
+                Button("設定画面へ戻る", action: onDone)
+                    .buttonStyle(.borderedProminent).controlSize(.large)
+            }
+            .padding()
+        }
+        .navigationTitle("終了サマリ")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

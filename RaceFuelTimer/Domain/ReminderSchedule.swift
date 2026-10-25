@@ -200,6 +200,7 @@ struct Session: Equatable {
     private(set) var endedAt: Date?
     private(set) var totalPausedSeconds: TimeInterval
     let schedule: [ScheduledReminder]
+    private(set) var records: [String: IntakeRecord] = [:]
     private(set) var reminderExecutionState: ReminderExecutionState
 
     init(plan: ReminderPlan, startedAt: Date = .now) throws {
@@ -264,15 +265,75 @@ struct Session: Equatable {
 
     func nextReminder(at date: Date) -> ScheduledReminder? {
         reminderExecutionState.nextReminder(
-            in: schedule,
+            in: schedule.filter { records[$0.identifier] == nil },
             afterElapsedMinutes: elapsedMinutes(at: date)
         )
     }
 
     func nextReminder(for kind: ReminderKind, at date: Date) -> ScheduledReminder? {
         reminderExecutionState.nextReminder(
-            in: schedule.filter { $0.kinds.contains(kind) },
+            in: schedule.filter { $0.kinds.contains(kind) && records[$0.identifier] == nil },
             afterElapsedMinutes: elapsedMinutes(at: date)
+        )
+    }
+}
+
+enum IntakeResult: Equatable {
+    case taken
+    case skipped
+}
+
+struct IntakeRecord: Equatable {
+    let reminderID: String
+    let recordedAt: Date
+    let result: IntakeResult
+}
+
+struct SessionSummary: Equatable {
+    let elapsedSeconds: TimeInterval
+    let dueCount: Int
+    let takenCount: Int
+    let skippedCount: Int
+    let unrecordedCount: Int
+    let earlyRecordCount: Int
+}
+
+extension Session {
+    // 到来済みの未記録を優先し、なければ次回予定を先行記録できる。
+    func recordingTarget(at date: Date) -> ScheduledReminder? {
+        let unrecorded = schedule.filter { records[$0.identifier] == nil }
+        return unrecorded.first { $0.trigger.minutes <= elapsedMinutes(at: date) }
+            ?? unrecorded.first
+    }
+
+    @discardableResult
+    mutating func record(_ result: IntakeResult, reminderID: String, at date: Date) -> Bool {
+        guard state == .running,
+              recordingTarget(at: date)?.identifier == reminderID,
+              records[reminderID] == nil else { return false }
+        records[reminderID] = IntakeRecord(reminderID: reminderID, recordedAt: date, result: result)
+        return true
+    }
+
+    func pendingReminders(at date: Date) -> [ScheduledReminder] {
+        guard state == .running else { return [] }
+        return schedule.filter {
+            records[$0.identifier] == nil && TimeInterval($0.trigger.minutes * 60) > elapsedSeconds(at: date)
+        }
+    }
+
+    var summary: SessionSummary? {
+        guard state == .ended, let endedAt else { return nil }
+        let due = schedule.filter { $0.trigger.minutes <= elapsedMinutes(at: endedAt) }
+        return SessionSummary(
+            elapsedSeconds: elapsedSeconds(at: endedAt),
+            dueCount: due.count,
+            takenCount: records.values.filter { $0.result == .taken }.count,
+            skippedCount: records.values.filter { $0.result == .skipped }.count,
+            unrecordedCount: due.filter { records[$0.identifier] == nil }.count,
+            earlyRecordCount: schedule.filter {
+                $0.trigger.minutes > elapsedMinutes(at: endedAt) && records[$0.identifier] != nil
+            }.count
         )
     }
 }

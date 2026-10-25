@@ -1,5 +1,6 @@
 import Foundation
 import Testing
+import UserNotifications
 @testable import RaceFuelTimer
 
 @Test("10分ごとの通知を終了予定まで生成する")
@@ -123,4 +124,243 @@ func 一時停止中は次の補給予定が進まない() throws {
 
     // Assert
     #expect(nextReminder?.trigger == .elapsedMinutes(20))
+}
+
+private func 記録用セッション() throws -> Session {
+    try Session(plan: ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30
+    ), startedAt: Date(timeIntervalSince1970: 0))
+}
+
+@Test("予定直前の先行記録は同じIDの連打で次の予定に記録しない")
+func 予定直前の先行記録は同じIDの連打で次の予定に記録しない() throws {
+    // Arrange
+    var session = try 記録用セッション()
+    let target = try #require(session.recordingTarget(at: Date(timeIntervalSince1970: 599)))
+    // Act
+    let first = session.record(.taken, reminderID: target.identifier, at: Date(timeIntervalSince1970: 599))
+    let duplicate = session.record(.skipped, reminderID: target.identifier, at: Date(timeIntervalSince1970: 600))
+    // Assert
+    #expect(first)
+    #expect(!duplicate)
+    #expect(session.records.count == 1)
+    #expect(session.records[target.identifier]?.recordedAt == Date(timeIntervalSince1970: 599))
+    #expect(session.records[target.identifier]?.result == .taken)
+    #expect(session.nextReminder(at: Date(timeIntervalSince1970: 599))?.trigger.minutes == 20)
+    #expect(session.pendingReminders(at: Date(timeIntervalSince1970: 599)).map(\.trigger.minutes) == [20, 30])
+}
+
+@Test("復帰で通知到来を同期しても過去の未記録予定を古い順に記録できる")
+func 復帰で通知到来を同期しても過去の未記録予定を古い順に記録できる() throws {
+    // Arrange
+    var session = try 記録用セッション()
+    let now = Date(timeIntervalSince1970: 1200)
+    // Act
+    session.synchronizeAfterInterruption(at: now)
+    let target = try #require(session.recordingTarget(at: now))
+    let recorded = session.record(.skipped, reminderID: target.identifier, at: now)
+    // Assert
+    #expect(target.trigger.minutes == 10)
+    #expect(recorded)
+    #expect(session.recordingTarget(at: now)?.trigger.minutes == 20)
+    #expect(session.nextReminder(at: now)?.trigger.minutes == 30)
+    #expect(session.pendingReminders(at: now).map(\.trigger.minutes) == [30])
+}
+
+@Test("一時停止中は記録と通知予約を拒否し再開後は停止時間を除く")
+func 一時停止中は記録と通知予約を拒否し再開後は停止時間を除く() throws {
+    // Arrange
+    var session = try 記録用セッション()
+    let target = session.schedule[0]
+    session.pause(at: Date(timeIntervalSince1970: 300))
+    // Act
+    let pausedRecord = session.record(.taken, reminderID: target.identifier, at: Date(timeIntervalSince1970: 1000))
+    let pausedPending = session.pendingReminders(at: Date(timeIntervalSince1970: 1000))
+    let resumed = session.resume(at: Date(timeIntervalSince1970: 1200))
+    let recorded = session.record(.taken, reminderID: target.identifier, at: Date(timeIntervalSince1970: 1500))
+    // Assert
+    #expect(!pausedRecord)
+    #expect(pausedPending.isEmpty)
+    #expect(resumed)
+    #expect(recorded)
+    #expect(session.elapsedSeconds(at: Date(timeIntervalSince1970: 1500)) == 600)
+    #expect(session.pendingReminders(at: Date(timeIntervalSince1970: 1500)).map(\.trigger.minutes) == [20, 30])
+}
+
+@Test("途中終了サマリは到来済み未記録と未到来の先行記録を区別する")
+func 途中終了サマリは到来済み未記録と未到来の先行記録を区別する() throws {
+    // Arrange
+    var session = try 記録用セッション()
+    session.record(.taken, reminderID: session.schedule[0].identifier, at: Date(timeIntervalSince1970: 500))
+    session.record(.skipped, reminderID: session.schedule[1].identifier, at: Date(timeIntervalSince1970: 600))
+    // Act
+    session.end(at: Date(timeIntervalSince1970: 900))
+    let summary = try #require(session.summary)
+    let endedRecord = session.record(.taken, reminderID: session.schedule[2].identifier, at: Date(timeIntervalSince1970: 1800))
+    // Assert
+    #expect(summary == SessionSummary(elapsedSeconds: 900, dueCount: 1, takenCount: 1,
+                                     skippedCount: 1, unrecordedCount: 0, earlyRecordCount: 1))
+    #expect(!endedRecord)
+    #expect(session.pendingReminders(at: Date(timeIntervalSince1970: 900)).isEmpty)
+    #expect(session.summary == summary)
+}
+
+@Test("通知終了予定後も未記録を記録でき記録ゼロサマリは全到来を未記録にする")
+func 通知終了予定後も未記録を記録でき記録ゼロサマリは全到来を未記録にする() throws {
+    // Arrange
+    var empty = try 記録用セッション()
+    var recorded = empty
+    let date = Date(timeIntervalSince1970: 2400)
+    // Act
+    empty.end(at: date)
+    let success = recorded.record(.taken, reminderID: recorded.schedule[0].identifier, at: date)
+    recorded.end(at: date)
+    // Assert
+    #expect(empty.summary?.dueCount == 3)
+    #expect(empty.summary?.unrecordedCount == 3)
+    #expect(empty.summary?.takenCount == 0)
+    #expect(success)
+    #expect(recorded.summary?.unrecordedCount == 2)
+    #expect(recorded.summary?.takenCount == 1)
+}
+
+@Test("通知なしプランと再開始のログは空で安全に集計できる")
+func 通知なしプランと再開始のログは空で安全に集計できる() throws {
+    // Arrange
+    var session = try Session(plan: ReminderPlan(hydration: .init(isEnabled: false), fuel: .init(isEnabled: false)),
+                              startedAt: Date(timeIntervalSince1970: 0))
+    let next = try 記録用セッション()
+    // Act
+    let target = session.recordingTarget(at: Date(timeIntervalSince1970: 3600))
+    session.end(at: Date(timeIntervalSince1970: 3600))
+    // Assert
+    #expect(target == nil)
+    #expect(session.summary == SessionSummary(elapsedSeconds: 3600, dueCount: 0, takenCount: 0,
+                                             skippedCount: 0, unrecordedCount: 0, earlyRecordCount: 0))
+    #expect(next.records.isEmpty)
+    #expect(next.summary == nil)
+}
+
+@Test("存在しない予定や対象外IDは記録せず通知時刻境界でも予定IDを維持する")
+func 存在しない予定や対象外IDは記録せず通知時刻境界でも予定IDを維持する() throws {
+    // Arrange
+    var session = try 記録用セッション()
+    let date = Date(timeIntervalSince1970: 600)
+    // Act
+    let unknown = session.record(.taken, reminderID: "unknown", at: date)
+    let later = session.record(.taken, reminderID: session.schedule[1].identifier, at: date)
+    let first = session.record(.taken, reminderID: session.schedule[0].identifier, at: date)
+    // Assert
+    #expect(!unknown)
+    #expect(!later)
+    #expect(first)
+    #expect(session.records.count == 1)
+    #expect(session.pendingReminders(at: date).map(\.trigger.minutes) == [20, 30])
+}
+
+@Test("一時停止中の終了サマリは停止中の時間を含めない")
+func 一時停止中の終了サマリは停止中の時間を含めない() throws {
+    // Arrange
+    var session = try 記録用セッション()
+    session.pause(at: Date(timeIntervalSince1970: 900))
+    // Act
+    session.end(at: Date(timeIntervalSince1970: 7200))
+    // Assert
+    #expect(session.summary?.elapsedSeconds == 900)
+    #expect(session.summary?.dueCount == 1)
+    #expect(session.summary?.unrecordedCount == 1)
+}
+
+@MainActor
+private final class 記録通知センター: NotificationCenterClient {
+    var requests: [String: UNNotificationRequest] = [:]
+    var duringAuthorization: (() -> Void)?
+    var duringAdd: ((UNNotificationRequest) -> Void)?
+
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        duringAuthorization?()
+        return .authorized
+    }
+
+    func requestAuthorization() async throws -> Bool { true }
+
+    func add(_ request: UNNotificationRequest) async throws {
+        duringAdd?(request)
+        // 取消が先行してもOS側への追加が完了する競合を再現する。
+        requests[request.identifier] = request
+    }
+
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+        for identifier in identifiers { requests[identifier] = nil }
+    }
+}
+
+@Test("通知追加中の記録取消は追加完了後も対象通知を残さず後続時刻を保つ")
+@MainActor
+func 通知追加中の記録取消は追加完了後も対象通知を残さず後続時刻を保つ() async throws {
+    // Arrange
+    let center = 記録通知センター()
+    let scheduler = LocalNotificationScheduler(center: center)
+    let session = try Session(plan: ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30))
+    let id = session.schedule[0].identifier
+    center.duringAdd = { request in
+        if request.identifier.hasPrefix(id + "-") { scheduler.cancelReminder(id) }
+    }
+    let operation = scheduler.beginNotificationOperation()
+    // Act
+    await scheduler.requestAuthorizationAndSchedule(for: session, operationID: operation)
+    // Assert
+    #expect(center.requests.count == 2)
+    #expect(!center.requests.keys.contains { $0.hasPrefix(id + "-") })
+    let intervals = center.requests.values.compactMap { ($0.trigger as? UNTimeIntervalNotificationTrigger)?.timeInterval }.sorted()
+    #expect(intervals.count == 2)
+    #expect(intervals[0] > 1190 && intervals[0] <= 1200)
+    #expect(intervals[1] > 1790 && intervals[1] <= 1800)
+}
+
+@Test("通知許可待ちの記録と再開でも記録済み通知を再予約しない")
+@MainActor
+func 通知許可待ちの記録と再開でも記録済み通知を再予約しない() async throws {
+    // Arrange
+    let center = 記録通知センター()
+    let scheduler = LocalNotificationScheduler(center: center)
+    var session = try Session(plan: ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30))
+    let id = session.schedule[0].identifier
+    center.duringAuthorization = { scheduler.cancelReminder(id) }
+    let operation = scheduler.beginNotificationOperation()
+    // Act
+    await scheduler.requestAuthorizationAndSchedule(for: session, operationID: operation)
+    let initialIDs = Set(center.requests.keys)
+    session.record(.taken, reminderID: id, at: .now)
+    session.pause(at: .now)
+    scheduler.cancelScheduledReminders()
+    session.resume(at: .now)
+    let resumedOperation = scheduler.beginNotificationOperation()
+    await scheduler.scheduleReminders(for: session, operationID: resumedOperation)
+    // Assert
+    #expect(initialIDs.count == 2)
+    #expect(center.requests.count == 2)
+    #expect(!center.requests.keys.contains { $0.hasPrefix(id + "-") })
+}
+
+@Test("通知追加中の終了は後続を含む全通知を取り消す")
+@MainActor
+func 通知追加中の終了は後続を含む全通知を取り消す() async throws {
+    // Arrange
+    let center = 記録通知センター()
+    let scheduler = LocalNotificationScheduler(center: center)
+    let session = try Session(plan: ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30))
+    center.duringAdd = { _ in scheduler.cancelScheduledReminders() }
+    let operation = scheduler.beginNotificationOperation()
+    // Act
+    await scheduler.requestAuthorizationAndSchedule(for: session, operationID: operation)
+    // Assert
+    #expect(center.requests.isEmpty)
 }

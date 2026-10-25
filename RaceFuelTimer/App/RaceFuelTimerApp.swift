@@ -11,11 +11,19 @@ struct RaceFuelTimerApp: App {
     var body: some Scene {
         WindowGroup {
             NavigationStack {
-                if let currentSession = session {
+                if let summary = session?.summary {
+                    SessionSummaryView(summary: summary) { session = nil }
+                } else if let currentSession = session {
                     SessionTimerView(
                         session: currentSession,
                         notificationAuthorization: notificationScheduler.authorization,
                         onSessionChange: { session = $0 },
+                        onRecord: { reminderID, result in
+                            guard var updatedSession = session,
+                                  updatedSession.record(result, reminderID: reminderID, at: .now) else { return }
+                            session = updatedSession
+                            notificationScheduler.cancelReminder(reminderID)
+                        },
                         onPause: {
                             notificationScheduler.cancelScheduledReminders()
                         },
@@ -29,10 +37,10 @@ struct RaceFuelTimerApp: App {
                                 )
                             }
                         }
-                    ) { _ in
+                    ) { endedSession in
                         notificationScheduler.cancelScheduledReminders()
                         notificationsAreEnabledForCurrentSession = false
-                        session = nil
+                        session = endedSession
                     }
                 } else {
                     ContentView { plan, shouldRequestNotificationPermission in

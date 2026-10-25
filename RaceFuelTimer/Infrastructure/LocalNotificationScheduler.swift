@@ -11,31 +11,66 @@ enum LocalNotificationAuthorization: Equatable {
 }
 
 @MainActor
+protocol NotificationCenterClient {
+    func authorizationStatus() async -> UNAuthorizationStatus
+    func requestAuthorization() async throws -> Bool
+    func add(_ request: UNNotificationRequest) async throws
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String])
+}
+
+@MainActor
+private struct SystemNotificationCenterClient: NotificationCenterClient {
+    private let center = UNUserNotificationCenter.current()
+
+    func authorizationStatus() async -> UNAuthorizationStatus {
+        await center.notificationSettings().authorizationStatus
+    }
+
+    func requestAuthorization() async throws -> Bool {
+        try await center.requestAuthorization(options: [.alert, .sound])
+    }
+
+    func add(_ request: UNNotificationRequest) async throws {
+        try await center.add(request)
+    }
+
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+}
+
+@MainActor
 final class LocalNotificationScheduler: ObservableObject {
     @Published private(set) var authorization: LocalNotificationAuthorization = .notRequested
 
-    private let center = UNUserNotificationCenter.current()
+    private let center: any NotificationCenterClient
     private var scheduledNotificationIDs: [String] = []
     private var activeOperationID = UUID()
+    private var recordedReminderIDs: Set<String> = []
+
+    init(center: (any NotificationCenterClient)? = nil) {
+        self.center = center ?? SystemNotificationCenterClient()
+    }
 
     func beginNotificationOperation() -> UUID {
         let operationID = UUID()
         activeOperationID = operationID
         removeScheduledReminders()
+        recordedReminderIDs.removeAll()
         return operationID
     }
 
     func requestAuthorizationAndSchedule(for session: Session, operationID: UUID) async {
-        let settings = await center.notificationSettings()
+        let status = await center.authorizationStatus()
         guard isActive(operationID) else { return }
 
-        switch settings.authorizationStatus {
+        switch status {
         case .authorized, .provisional, .ephemeral:
             authorization = .authorized
             await scheduleReminders(for: session, operationID: operationID)
         case .notDetermined:
             do {
-                let isGranted = try await center.requestAuthorization(options: [.alert, .sound])
+                let isGranted = try await center.requestAuthorization()
                 guard isActive(operationID) else { return }
                 authorization = isGranted ? .authorized : .denied
                 if isGranted {
@@ -59,7 +94,9 @@ final class LocalNotificationScheduler: ObservableObject {
         let now = Date.now
         let elapsedSeconds = session.elapsedSeconds(at: now)
 
-        for reminder in session.schedule {
+        for reminder in session.pendingReminders(at: now) {
+            guard isActive(operationID) else { return }
+            guard !recordedReminderIDs.contains(reminder.identifier) else { continue }
             let remainingSeconds = TimeInterval(reminder.trigger.minutes * 60) - elapsedSeconds
             guard remainingSeconds > 0 else { continue }
 
@@ -76,7 +113,7 @@ final class LocalNotificationScheduler: ObservableObject {
 
             do {
                 try await center.add(request)
-                if isActive(operationID) {
+                if isActive(operationID), !recordedReminderIDs.contains(reminder.identifier) {
                     scheduledNotificationIDs.append(request.identifier)
                 } else {
                     center.removePendingNotificationRequests(withIdentifiers: [request.identifier])
@@ -88,6 +125,13 @@ final class LocalNotificationScheduler: ObservableObject {
                 }
             }
         }
+    }
+
+    func cancelReminder(_ reminderID: String) {
+        recordedReminderIDs.insert(reminderID)
+        let requestID = "\(reminderID)-\(activeOperationID.uuidString)"
+        center.removePendingNotificationRequests(withIdentifiers: [requestID])
+        scheduledNotificationIDs.removeAll { $0 == requestID }
     }
 
     func cancelScheduledReminders() {
