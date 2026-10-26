@@ -3,6 +3,7 @@ import SwiftUI
 struct SessionTimerView: View {
     let session: Session
     let notificationAuthorization: LocalNotificationAuthorization
+    let liveActivityUnavailable: Bool
     let onSessionChange: (Session) -> Void
     let onRecord: (String, IntakeResult) -> Void
     let onPause: () -> Void
@@ -40,6 +41,20 @@ struct SessionTimerView: View {
                     recordingSection(at: context.date)
 
                     notificationStatusSection
+
+                    GroupBox("ロック画面の表示") {
+                        VStack(alignment: .leading, spacing: 8) {
+                            if liveActivityUnavailable {
+                                Text("ロック画面に表示できません。アプリ内のタイマーは継続しています。")
+                                    .font(.footnote)
+                            }
+                            Text("補給予定は更新時点の内容です。予定時刻を過ぎたら、アプリを開いて最新の予定を確認してください。")
+                            Text("ロック画面の更新は開始から最長8時間です。更新終了後やアプリの完全終了後も表示が残る場合があり、次の起動時に削除します。")
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    }
 
                     Text("画面のロックを解除したときや、別のアプリからこのアプリに切り替えたときも、経過時間は正しく表示されます。アプリを完全に終了すると、このランのタイマーは続きから再開できません。")
                         .font(.footnote)

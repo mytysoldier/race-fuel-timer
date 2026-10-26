@@ -7,7 +7,7 @@ DERIVED_DATA := build/DerivedData
 .PHONY: lint typecheck test build
 
 lint:
-	@find RaceFuelTimer RaceFuelTimerTests -name '*.swift' -print0 | xargs -0 swiftc -parse
+	@find RaceFuelTimer RaceFuelTimerTests RaceFuelTimerLiveActivity -name '*.swift' -print0 | xargs -0 swiftc -parse
 
 typecheck:
 	xcodebuild -project $(PROJECT) -scheme $(SCHEME) -sdk iphonesimulator -destination '$(DESTINATION)' -derivedDataPath $(DERIVED_DATA) build-for-testing CODE_SIGNING_ALLOWED=NO
