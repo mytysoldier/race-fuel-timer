@@ -50,8 +50,8 @@ struct RaceFuelTimerApp: App {
                         session = newSession
                         notificationsAreEnabledForCurrentSession = shouldRequestNotificationPermission
 
-                        guard shouldRequestNotificationPermission else { return }
                         let operationID = notificationScheduler.beginNotificationOperation()
+                        guard shouldRequestNotificationPermission else { return }
                         Task {
                             await notificationScheduler.requestAuthorizationAndSchedule(
                                 for: newSession,

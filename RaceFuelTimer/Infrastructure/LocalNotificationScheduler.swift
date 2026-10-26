@@ -15,6 +15,7 @@ protocol NotificationCenterClient {
     func authorizationStatus() async -> UNAuthorizationStatus
     func requestAuthorization() async throws -> Bool
     func add(_ request: UNNotificationRequest) async throws
+    func pendingNotificationRequests() async -> [UNNotificationRequest]
     func removePendingNotificationRequests(withIdentifiers identifiers: [String])
 }
 
@@ -34,6 +35,10 @@ private struct SystemNotificationCenterClient: NotificationCenterClient {
         try await center.add(request)
     }
 
+    func pendingNotificationRequests() async -> [UNNotificationRequest] {
+        await center.pendingNotificationRequests()
+    }
+
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
         center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
@@ -47,9 +52,11 @@ final class LocalNotificationScheduler: ObservableObject {
     private var scheduledNotificationIDs: [String] = []
     private var activeOperationID = UUID()
     private var recordedReminderIDs: Set<String> = []
+    private var pendingCleanup: Task<Void, Never>?
 
     init(center: (any NotificationCenterClient)? = nil) {
         self.center = center ?? SystemNotificationCenterClient()
+        beginOrphanCleanup()
     }
 
     func beginNotificationOperation() -> UUID {
@@ -57,10 +64,13 @@ final class LocalNotificationScheduler: ObservableObject {
         activeOperationID = operationID
         removeScheduledReminders()
         recordedReminderIDs.removeAll()
+        beginOrphanCleanup()
         return operationID
     }
 
     func requestAuthorizationAndSchedule(for session: Session, operationID: UUID) async {
+        await waitForPendingCleanup()
+        guard isActive(operationID) else { return }
         let status = await center.authorizationStatus()
         guard isActive(operationID) else { return }
 
@@ -89,6 +99,7 @@ final class LocalNotificationScheduler: ObservableObject {
     }
 
     func scheduleReminders(for session: Session, operationID: UUID) async {
+        await waitForPendingCleanup()
         guard isActive(operationID), authorization == .authorized else { return }
 
         let now = Date.now
@@ -137,6 +148,23 @@ final class LocalNotificationScheduler: ObservableObject {
     func cancelScheduledReminders() {
         activeOperationID = UUID()
         removeScheduledReminders()
+    }
+
+    func waitForPendingCleanup() async {
+        await pendingCleanup?.value
+    }
+
+    private func beginOrphanCleanup() {
+        pendingCleanup = Task { [weak self] in
+            guard let self else { return }
+            let requests = await self.center.pendingNotificationRequests()
+            // 取得中に別のランが始まる場合があるため、完了時の有効IDを保護する。
+            let activeSuffix = "-" + self.activeOperationID.uuidString
+            let orphanedIDs = requests.map(\.identifier).filter {
+                $0.hasPrefix("reminder-") && !$0.hasSuffix(activeSuffix)
+            }
+            self.center.removePendingNotificationRequests(withIdentifiers: orphanedIDs)
+        }
     }
 
     private func isActive(_ operationID: UUID) -> Bool {
