@@ -66,7 +66,6 @@ struct ContentView: View {
     @State private var isNotificationExplanationPresented = false
     @State private var isSafetyInformationPresented = false
     @State private var isPrivacyInformationPresented = false
-    @State private var isResetConfirmationPresented = false
     @State private var shouldSkipNextPlanSave = false
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     @AppStorage("hasChosenNotificationUsage") private var hasChosenNotificationUsage = false
@@ -103,10 +102,6 @@ struct ContentView: View {
 
     private var notificationEndOptions: [Int] {
         EditablePlan.notificationEndOptions(intervalMinutes: editablePlan.intervalMinutes)
-    }
-
-    private var draftNotificationEndOptions: [Int] {
-        EditablePlan.notificationEndOptions(intervalMinutes: notificationSettingsDraft.editablePlan.intervalMinutes)
     }
 
     private var quickNotificationEndOptions: [Int] {
@@ -199,7 +194,13 @@ struct ContentView: View {
         .sheet(isPresented: $isPrivacyInformationPresented) { PrivacyInformationView() }
         .sheet(isPresented: $isNotificationSettingsPresented) {
             NavigationStack {
-                notificationSettingsView.navigationTitle("通知を調整").navigationBarTitleDisplayMode(.inline)
+                NotificationSettingsEditor(
+                    draft: $notificationSettingsDraft,
+                    formattedDuration: formattedDuration,
+                    notificationSummary: notificationSummary(for:),
+                    notificationMessage: notificationMessage(for:)
+                )
+                    .navigationTitle("通知を調整").navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
                             Button("キャンセル") { isNotificationSettingsPresented = false }
@@ -210,56 +211,6 @@ struct ContentView: View {
                     }
             }
         }
-    }
-
-    private var notificationSettingsView: some View {
-        Form {
-            Section("通知のタイミング") {
-                Picker("通知間隔", selection: $notificationSettingsDraft.editablePlan.intervalMinutes) {
-                    ForEach(Array(stride(from: 10, through: 240, by: 10)), id: \.self) { Text("\($0)分ごと").tag($0) }
-                }
-                Picker("通知を止める予定", selection: $notificationSettingsDraft.editablePlan.notificationEndMinutes) {
-                    ForEach(draftNotificationEndOptions, id: \.self) { Text("\(formattedDuration($0))後").tag($0) }
-                }
-                Text(notificationSummary(for: notificationSettingsDraft.editablePlan)).font(.footnote).foregroundStyle(.secondary)
-            }
-            Section("通知メッセージ") {
-                TextField("補給の時間です", text: $notificationSettingsDraft.editablePlan.notificationMessage)
-                    .onChange(of: notificationSettingsDraft.editablePlan.notificationMessage) { _, message in
-                        notificationSettingsDraft.editablePlan.notificationMessage = String(message.prefix(30))
-                    }
-                Text("通知に表示する短いメッセージです。").font(.footnote).foregroundStyle(.secondary)
-            }
-            Section("通知プレビュー") {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("ランニング補給タイマー").font(.subheadline.weight(.semibold))
-                    Text(notificationMessage(for: notificationSettingsDraft.editablePlan))
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("通知プレビュー。ランニング補給タイマー。\(notificationMessage(for: notificationSettingsDraft.editablePlan))")
-            }
-            Section {
-                Toggle("画面外でも補給を知らせる", isOn: Binding(get: { notificationSettingsDraft.shouldUseNotifications }, set: {
-                    notificationSettingsDraft.shouldUseNotifications = $0
-                    notificationSettingsDraft.hasChosenNotificationUsage = true
-                }))
-                Text("オンにすると、ロック中や他のアプリ使用中にも通知を表示します。オフでもタイマー画面で次の予定を確認できます。")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Button("設定を初期化", role: .destructive) { isResetConfirmationPresented = true }
-            }
-        }
-        .onChange(of: notificationSettingsDraft.editablePlan.intervalMinutes) { _, _ in
-            if !draftNotificationEndOptions.contains(notificationSettingsDraft.editablePlan.notificationEndMinutes) {
-                notificationSettingsDraft.editablePlan.notificationEndMinutes = draftNotificationEndOptions.first ?? 240
-            }
-        }
-        .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
-            Button("初期化", role: .destructive) {
-                notificationSettingsDraft.editablePlan = .init()
-                notificationSettingsDraft.shouldResetPersistedPlan = true
-            }
-        } message: { Text("補給リマインドの設定を初期値へ戻します。") }
     }
 
     private var notificationSummary: String {
@@ -337,5 +288,68 @@ struct ContentView: View {
         } else {
             isNotificationExplanationPresented = true
         }
+    }
+}
+
+// シート自身がBindingを監視し、選択欄と派生テキストを同じドラフトから描画する。
+private struct NotificationSettingsEditor: View {
+    @Binding var draft: NotificationSettingsDraft
+    let formattedDuration: (Int) -> String
+    let notificationSummary: (EditablePlan) -> String
+    let notificationMessage: (EditablePlan) -> String
+    @State private var isResetConfirmationPresented = false
+
+    private var draftNotificationEndOptions: [Int] {
+        EditablePlan.notificationEndOptions(intervalMinutes: draft.editablePlan.intervalMinutes)
+    }
+
+    var body: some View {
+        Form {
+            Section("通知のタイミング") {
+                Picker("通知間隔", selection: $draft.editablePlan.intervalMinutes) {
+                    ForEach(Array(stride(from: 10, through: 240, by: 10)), id: \.self) { Text("\($0)分ごと").tag($0) }
+                }
+                Picker("通知を止める予定", selection: $draft.editablePlan.notificationEndMinutes) {
+                    ForEach(draftNotificationEndOptions, id: \.self) { Text("\(formattedDuration($0))後").tag($0) }
+                }
+                Text(notificationSummary(draft.editablePlan)).font(.footnote).foregroundStyle(.secondary)
+            }
+            Section("通知メッセージ") {
+                TextField("補給の時間です", text: $draft.editablePlan.notificationMessage)
+                    .onChange(of: draft.editablePlan.notificationMessage) { _, message in
+                        draft.editablePlan.notificationMessage = String(message.prefix(30))
+                    }
+                Text("通知に表示する短いメッセージです。").font(.footnote).foregroundStyle(.secondary)
+            }
+            Section("通知プレビュー") {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("ランニング補給タイマー").font(.subheadline.weight(.semibold))
+                    Text(notificationMessage(draft.editablePlan))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("通知プレビュー。ランニング補給タイマー。\(notificationMessage(draft.editablePlan))")
+            }
+            Section {
+                Toggle("画面外でも補給を知らせる", isOn: Binding(get: { draft.shouldUseNotifications }, set: {
+                    draft.shouldUseNotifications = $0
+                    draft.hasChosenNotificationUsage = true
+                }))
+                Text("オンにすると、ロック中や他のアプリ使用中にも通知を表示します。オフでもタイマー画面で次の予定を確認できます。")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Button("設定を初期化", role: .destructive) { isResetConfirmationPresented = true }
+            }
+        }
+        .onChange(of: draft.editablePlan.intervalMinutes) { _, _ in
+            if !draftNotificationEndOptions.contains(draft.editablePlan.notificationEndMinutes) {
+                draft.editablePlan.notificationEndMinutes = draftNotificationEndOptions.first ?? 240
+            }
+        }
+        .confirmationDialog("設定を初期化しますか？", isPresented: $isResetConfirmationPresented) {
+            Button("初期化", role: .destructive) {
+                draft.editablePlan = .init()
+                draft.shouldResetPersistedPlan = true
+            }
+        } message: { Text("補給リマインドの設定を初期値へ戻します。") }
     }
 }
