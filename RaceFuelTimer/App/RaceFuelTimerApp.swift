@@ -6,6 +6,7 @@ struct RaceFuelTimerApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @State private var session: Session?
     @State private var notificationsAreEnabledForCurrentSession = false
+    @StateObject private var liveActivity = SessionLiveActivityController()
     @StateObject private var notificationScheduler = LocalNotificationScheduler()
 
     var body: some Scene {
@@ -17,6 +18,7 @@ struct RaceFuelTimerApp: App {
                     SessionTimerView(
                         session: currentSession,
                         notificationAuthorization: notificationScheduler.authorization,
+                        liveActivityUnavailable: liveActivity.status == .unavailable,
                         onSessionChange: { session = $0 },
                         onRecord: { reminderID, result in
                             guard var updatedSession = session,
@@ -59,9 +61,21 @@ struct RaceFuelTimerApp: App {
                     }
                 }
             }
+            .onChange(of: session) { _, updated in
+                liveActivity.synchronize(session: updated)
+            }
+            .task(id: scenePhase) {
+                liveActivity.synchronize(session: session)
+                guard scenePhase == .active else { return }
+                while !Task.isCancelled {
+                    try? await Task.sleep(for: .seconds(1))
+                    guard !Task.isCancelled else { return }
+                    liveActivity.synchronize(session: session)
+                }
+            }
             .onChange(of: scenePhase) { _, phase in
-                guard phase == .active else { return }
-                session?.synchronizeAfterInterruption(at: .now)
+                if phase == .active { session?.synchronizeAfterInterruption(at: .now) }
+                liveActivity.synchronize(session: session, force: phase == .active)
             }
         }
     }
