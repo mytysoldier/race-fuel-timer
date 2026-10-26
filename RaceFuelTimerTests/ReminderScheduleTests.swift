@@ -277,6 +277,7 @@ private final class 記録通知センター: NotificationCenterClient {
     var requests: [String: UNNotificationRequest] = [:]
     var duringAuthorization: (() -> Void)?
     var duringAdd: ((UNNotificationRequest) -> Void)?
+    var duringPendingRead: (() async -> Void)?
 
     func authorizationStatus() async -> UNAuthorizationStatus {
         duringAuthorization?()
@@ -289,6 +290,13 @@ private final class 記録通知センター: NotificationCenterClient {
         duringAdd?(request)
         // 取消が先行してもOS側への追加が完了する競合を再現する。
         requests[request.identifier] = request
+    }
+
+    func pendingNotificationRequests() async -> [UNNotificationRequest] {
+        let hook = duringPendingRead
+        duringPendingRead = nil
+        await hook?()
+        return Array(requests.values)
     }
 
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
@@ -363,4 +371,118 @@ func 通知追加中の終了は後続を含む全通知を取り消す() async 
     await scheduler.requestAuthorizationAndSchedule(for: session, operationID: operation)
     // Assert
     #expect(center.requests.isEmpty)
+}
+
+@Test("再起動後の新セッション開始で前プロセスの予約通知が残らない")
+@MainActor
+func 再起動後に古い予約通知を残さない() async throws {
+    // Arrange
+    let center = 記録通知センター()
+    let plan = ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30
+    )
+    let previousScheduler = LocalNotificationScheduler(center: center)
+    let previousSession = try Session(plan: plan)
+    let previousOperation = previousScheduler.beginNotificationOperation()
+    await previousScheduler.requestAuthorizationAndSchedule(for: previousSession, operationID: previousOperation)
+    let previousIDs = Set(center.requests.keys)
+    let restartedScheduler = LocalNotificationScheduler(center: center)
+    let newSession = try Session(plan: plan)
+    // Act
+    let newOperation = restartedScheduler.beginNotificationOperation()
+    await restartedScheduler.requestAuthorizationAndSchedule(for: newSession, operationID: newOperation)
+    // Assert
+    #expect(previousIDs.count == 3)
+    #expect(center.requests.count == 3)
+    #expect(Set(center.requests.keys).isDisjoint(with: previousIDs))
+    #expect(center.requests.keys.allSatisfy { $0.hasSuffix(newOperation.uuidString) })
+}
+
+private func 残留検証用通知(_ identifier: String) -> UNNotificationRequest {
+    UNNotificationRequest(identifier: identifier, content: UNMutableNotificationContent(),
+                          trigger: UNTimeIntervalNotificationTrigger(timeInterval: 600, repeats: false))
+}
+
+@Test("起動時に古い補給予約だけを削除し別用途の予約を保持する")
+@MainActor
+func 起動時に古い補給予約だけを削除する() async {
+    // Arrange
+    let center = 記録通知センター()
+    let oldID = "reminder-10-hydration-" + UUID().uuidString
+    center.requests[oldID] = 残留検証用通知(oldID)
+    center.requests["unrelated-request"] = 残留検証用通知("unrelated-request")
+    // Act
+    let scheduler = LocalNotificationScheduler(center: center)
+    await scheduler.waitForPendingCleanup()
+    // Assert
+    #expect(Set(center.requests.keys) == ["unrelated-request"])
+    #expect(scheduler.authorization == .notRequested)
+}
+
+@Test("通知なしの新しい予約操作でも古い補給予約を取り消す")
+@MainActor
+func 通知なし開始でも古い補給予約を取り消す() async {
+    // Arrange
+    let center = 記録通知センター()
+    let scheduler = LocalNotificationScheduler(center: center)
+    await scheduler.waitForPendingCleanup()
+    let oldID = "reminder-20-hydration-" + UUID().uuidString
+    center.requests[oldID] = 残留検証用通知(oldID)
+    // Act
+    _ = scheduler.beginNotificationOperation()
+    await scheduler.waitForPendingCleanup()
+    // Assert
+    #expect(center.requests.isEmpty)
+    #expect(scheduler.authorization == .notRequested)
+}
+
+@Test("起動時の古い予約取得が遅れても新しいランの予約を消さない")
+@MainActor
+func 遅い起動時整理から新しい予約を保護する() async throws {
+    // Arrange
+    let center = 記録通知センター()
+    let oldID = "reminder-10-hydration-" + UUID().uuidString
+    center.requests[oldID] = 残留検証用通知(oldID)
+    let session = try Session(plan: ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30
+    ))
+    let scheduler = LocalNotificationScheduler(center: center)
+    var newOperation: UUID?
+    // 起動時の照会が、新ランの予約追加後の内容を返す競合を再現する。
+    center.duringPendingRead = {
+        let operation = scheduler.beginNotificationOperation()
+        newOperation = operation
+        await scheduler.requestAuthorizationAndSchedule(for: session, operationID: operation)
+    }
+    // Act
+    await scheduler.waitForPendingCleanup()
+    // Assert
+    let operation = try #require(newOperation)
+    #expect(center.requests.count == 3)
+    #expect(center.requests[oldID] == nil)
+    #expect(center.requests.keys.allSatisfy { $0.hasSuffix(operation.uuidString) })
+}
+
+@Test("古い予約整理を待つ間に別操作が始まっても旧操作は予約しない")
+@MainActor
+func 古い予約操作を再開させない() async throws {
+    // Arrange
+    let center = 記録通知センター()
+    let scheduler = LocalNotificationScheduler(center: center)
+    let session = try Session(plan: ReminderPlan(
+        hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+        fuel: .init(isEnabled: false), notificationEndMinutes: 30
+    ))
+    let oldOperation = scheduler.beginNotificationOperation()
+    let newOperation = scheduler.beginNotificationOperation()
+    // Act
+    await scheduler.requestAuthorizationAndSchedule(for: session, operationID: oldOperation)
+    let oldRequests = center.requests
+    await scheduler.requestAuthorizationAndSchedule(for: session, operationID: newOperation)
+    // Assert
+    #expect(oldRequests.isEmpty)
+    #expect(center.requests.count == 3)
+    #expect(center.requests.keys.allSatisfy { $0.hasSuffix(newOperation.uuidString) })
 }
