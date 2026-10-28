@@ -198,6 +198,8 @@ struct SessionTimerView: View {
 
 struct SessionSummaryView: View {
     let summary: SessionSummary
+    let historySaveFailed: Bool
+    let onRetry: () -> Void
     let onDone: () -> Void
 
     var body: some View {
@@ -213,9 +215,17 @@ struct SessionSummaryView: View {
                     Text("摂った・スキップには、終了時点で未到来の予定への先行記録\(summary.earlyRecordCount)回を含みます。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                Text("未到来の予定は未記録に含めません。この記録は今回のセッション内だけで保持され、履歴として保存されません。")
+                Text("未到来の予定は未記録に含めません。")
                     .font(.footnote).foregroundStyle(.secondary)
-                Button("設定画面へ戻る", action: onDone)
+                if historySaveFailed {
+                    Text("履歴を保存できませんでした。再試行するか、この記録を保存せずに戻れます。")
+                        .foregroundStyle(.red)
+                    Button("保存を再試行", action: onRetry)
+                } else {
+                    Text("このランを端末内の履歴に保存しました。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Button(historySaveFailed ? "保存せず設定画面へ戻る" : "設定画面へ戻る", action: onDone)
                     .buttonStyle(.borderedProminent).controlSize(.large)
             }
             .padding()
