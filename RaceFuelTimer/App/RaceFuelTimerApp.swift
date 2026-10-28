@@ -5,15 +5,27 @@ struct RaceFuelTimerApp: App {
     @UIApplicationDelegateAdaptor(NotificationApplicationDelegate.self) private var applicationDelegate
     @Environment(\.scenePhase) private var scenePhase
     @State private var session: Session?
+    @State private var historySaveFailed = false
+    private let historyStore = SessionHistoryStore()
     @State private var notificationsAreEnabledForCurrentSession = false
     @StateObject private var liveActivity = SessionLiveActivityController()
     @StateObject private var notificationScheduler = LocalNotificationScheduler()
+
+    private func saveHistory() {
+        guard let session, let entry = SessionHistoryEntry(session: session) else { return }
+        do {
+            try historyStore.save(entry)
+            historySaveFailed = false
+        } catch {
+            historySaveFailed = true
+        }
+    }
 
     var body: some Scene {
         WindowGroup {
             NavigationStack {
                 if let summary = session?.summary {
-                    SessionSummaryView(summary: summary) { session = nil }
+                    SessionSummaryView(summary: summary, historySaveFailed: historySaveFailed, onRetry: saveHistory) { session = nil }
                 } else if let currentSession = session {
                     SessionTimerView(
                         session: currentSession,
@@ -43,6 +55,7 @@ struct RaceFuelTimerApp: App {
                         notificationScheduler.cancelScheduledReminders()
                         notificationsAreEnabledForCurrentSession = false
                         session = endedSession
+                        saveHistory()
                     }
                 } else {
                     ContentView { plan, shouldRequestNotificationPermission in

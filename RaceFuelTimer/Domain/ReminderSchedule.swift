@@ -194,6 +194,7 @@ enum SessionState: Equatable {
 }
 
 struct Session: Equatable {
+    let id = UUID()
     private(set) var state: SessionState
     let startedAt: Date
     private(set) var pausedAt: Date?
@@ -278,18 +279,18 @@ struct Session: Equatable {
     }
 }
 
-enum IntakeResult: Equatable {
+enum IntakeResult: String, Codable {
     case taken
     case skipped
 }
 
-struct IntakeRecord: Equatable {
+struct IntakeRecord: Codable, Equatable {
     let reminderID: String
     let recordedAt: Date
     let result: IntakeResult
 }
 
-struct SessionSummary: Equatable {
+struct SessionSummary: Codable, Equatable {
     let elapsedSeconds: TimeInterval
     let dueCount: Int
     let takenCount: Int
@@ -335,5 +336,22 @@ extension Session {
                 $0.trigger.minutes > elapsedMinutes(at: endedAt) && records[$0.identifier] != nil
             }.count
         )
+    }
+}
+
+struct SessionHistoryEntry: Codable, Equatable, Identifiable {
+    let id: UUID
+    let startedAt: Date
+    let endedAt: Date
+    let summary: SessionSummary
+    let records: [IntakeRecord]
+
+    init?(session: Session) {
+        guard let endedAt = session.endedAt, let summary = session.summary else { return nil }
+        id = session.id
+        startedAt = session.startedAt
+        self.endedAt = endedAt
+        self.summary = summary
+        records = session.records.values.sorted { $0.recordedAt < $1.recordedAt }
     }
 }

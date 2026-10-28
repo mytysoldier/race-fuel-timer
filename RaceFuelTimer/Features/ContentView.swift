@@ -147,6 +147,9 @@ struct ContentView: View {
                     }
                 }
 
+                NavigationLink("ランの履歴") { SessionHistoryView() }
+                    .buttonStyle(.bordered)
+
                 if didRecoverSavedPlan {
                     Label("保存した設定を新しい初期値へ戻しました。", systemImage: "exclamationmark.triangle.fill")
                         .font(.footnote).foregroundStyle(.orange)
@@ -351,5 +354,91 @@ private struct NotificationSettingsEditor: View {
                 draft.shouldResetPersistedPlan = true
             }
         } message: { Text("補給リマインドの設定を初期値へ戻します。") }
+    }
+}
+
+
+private struct SessionHistoryView: View {
+    private let store = SessionHistoryStore()
+    @State private var entries: [SessionHistoryEntry] = []
+    @State private var errorMessage: String?
+
+    var body: some View {
+        List {
+            if let errorMessage {
+                Text(errorMessage).foregroundStyle(.red)
+                Button("再読み込み", action: reload)
+            } else if entries.isEmpty {
+                Text("保存されたランはありません。")
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(entries) { entry in
+                    NavigationLink {
+                        SessionHistoryDetailView(entry: entry, onDelete: { delete(entry) })
+                    } label: {
+                        VStack(alignment: .leading) {
+                            Text(entry.startedAt.formatted(date: .abbreviated, time: .shortened))
+                            Text(Duration.seconds(entry.summary.elapsedSeconds).formatted(.time(pattern: .hourMinuteSecond)))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .navigationTitle("ランの履歴")
+        .onAppear(perform: reload)
+    }
+
+    private func reload() {
+        do { entries = try store.load(); errorMessage = nil }
+        catch { errorMessage = "履歴を読み込めませんでした。データは変更していません。" }
+    }
+
+    private func delete(_ entry: SessionHistoryEntry) -> Bool {
+        do { try store.delete(id: entry.id); reload(); return true }
+        catch { return false }
+    }
+}
+
+private struct SessionHistoryDetailView: View {
+    let entry: SessionHistoryEntry
+    let onDelete: () -> Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirmDelete = false
+    @State private var deleteFailed = false
+
+    var body: some View {
+        List {
+            Section("ラン") {
+                LabeledContent("開始", value: entry.startedAt.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("終了", value: entry.endedAt.formatted(date: .abbreviated, time: .shortened))
+                LabeledContent("経過時間", value: Duration.seconds(entry.summary.elapsedSeconds).formatted(.time(pattern: .hourMinuteSecond)))
+                LabeledContent("到来した予定", value: "\(entry.summary.dueCount)回")
+                LabeledContent("摂った", value: "\(entry.summary.takenCount)回")
+                LabeledContent("スキップ", value: "\(entry.summary.skippedCount)回")
+                LabeledContent("到来済み・未記録", value: "\(entry.summary.unrecordedCount)回")
+                if entry.summary.earlyRecordCount > 0 {
+                    Text("摂った・スキップには未到来の予定への先行記録\(entry.summary.earlyRecordCount)回を含みます。")
+                        .font(.footnote)
+                }
+            }
+            Section("補給記録") {
+                if entry.records.isEmpty { Text("記録はありません。") }
+                ForEach(entry.records, id: \.reminderID) { record in
+                    LabeledContent(record.result == .taken ? "摂った" : "スキップ",
+                                   value: record.recordedAt.formatted(date: .omitted, time: .shortened))
+                }
+            }
+            Section {
+                Button("この履歴を削除", role: .destructive) { confirmDelete = true }
+            }
+        }
+        .navigationTitle("ランの詳細")
+        .confirmationDialog("この履歴を削除しますか？", isPresented: $confirmDelete, titleVisibility: .visible) {
+            Button("削除", role: .destructive) { if onDelete() { dismiss() } else { deleteFailed = true } }
+        }
+        .alert("履歴を削除できませんでした", isPresented: $deleteFailed) {
+            Button("OK", role: .cancel) {}
+        } message: { Text("時間をおいてもう一度お試しください。") }
     }
 }

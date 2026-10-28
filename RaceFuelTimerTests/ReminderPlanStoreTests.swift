@@ -165,3 +165,73 @@ private func makeTestDefaults() -> UserDefaults {
     defaults.removePersistentDomain(forName: suiteName)
     return defaults
 }
+
+@Test("終了したセッションの履歴は再読込でき重複保存されず個別に削除できる")
+func 終了したセッションの履歴は再読込でき重複保存されず個別に削除できる() throws {
+    // Arrange
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("history.json")
+    let store = SessionHistoryStore(fileURL: url)
+    let start = Date(timeIntervalSince1970: 1000)
+    var session = try Session(plan: ReminderPlan(hydration: .init(isEnabled: true, firstReminderMinutes: 20, repeatIntervalMinutes: 20), fuel: .init(isEnabled: false)), startedAt: start)
+    let target = try #require(session.recordingTarget(at: start))
+    let recorded = session.record(.taken, reminderID: target.identifier, at: start)
+    #expect(recorded)
+    session.end(at: start.addingTimeInterval(60))
+    let entry = try #require(SessionHistoryEntry(session: session))
+
+    // Act
+    try store.save(entry)
+    try store.save(entry)
+    let restored = try SessionHistoryStore(fileURL: url).load()
+    try store.delete(id: entry.id)
+
+    // Assert
+    #expect(restored == [entry])
+    #expect(restored.first?.summary.earlyRecordCount == 1)
+    #expect(restored.first?.summary.unrecordedCount == 0)
+    #expect(try store.load().isEmpty)
+}
+
+@Test("破損または未知バージョンの履歴は保存や削除で上書きしない")
+func 破損または未知バージョンの履歴は保存や削除で上書きしない() throws {
+    // Arrange
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let url = directory.appendingPathComponent("history.json")
+    let store = SessionHistoryStore(fileURL: url)
+    var session = try Session(plan: ReminderPlan(hydration: .init(isEnabled: false), fuel: .init(isEnabled: false)))
+    session.end(at: .now)
+    let entry = try #require(SessionHistoryEntry(session: session))
+
+    for content in ["broken", "{\"version\":999,\"entries\":[]}"] {
+        // Act
+        let original = Data(content.utf8)
+        try original.write(to: url)
+        #expect(throws: (any Error).self) { try store.save(entry) }
+        #expect(throws: (any Error).self) { try store.delete(id: entry.id) }
+
+        // Assert
+        #expect(try Data(contentsOf: url) == original)
+    }
+}
+
+@Test("書き込み先を作成できない場合は履歴保存が失敗する")
+func 書き込み先を作成できない場合は履歴保存が失敗する() throws {
+    // Arrange
+    let parent = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    try Data("existing".utf8).write(to: parent)
+    defer { try? FileManager.default.removeItem(at: parent) }
+    let store = SessionHistoryStore(fileURL: parent.appendingPathComponent("history.json"))
+    var session = try Session(plan: ReminderPlan(hydration: .init(isEnabled: false), fuel: .init(isEnabled: false)))
+    session.end(at: .now)
+    let entry = try #require(SessionHistoryEntry(session: session))
+
+    // Act
+    #expect(throws: (any Error).self) { try store.save(entry) }
+
+    // Assert
+    #expect(try Data(contentsOf: parent) == Data("existing".utf8))
+}

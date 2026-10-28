@@ -158,3 +158,45 @@ private struct ReminderSettingPayload: Codable {
         return min(((minutes + increment - 1) / increment) * increment, ReminderPlan.allowedReminderMinutes.upperBound)
     }
 }
+
+
+struct SessionHistoryStore {
+    private struct Archive: Codable {
+        let version: Int
+        var entries: [SessionHistoryEntry]
+    }
+
+    enum StoreError: Error { case unsupportedVersion }
+    private let fileURL: URL
+
+    init(fileURL: URL? = nil) {
+        self.fileURL = fileURL ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("session-history.json")
+    }
+
+    func load() throws -> [SessionHistoryEntry] {
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return [] }
+        let archive = try JSONDecoder().decode(Archive.self, from: Data(contentsOf: fileURL))
+        guard archive.version == 1 else { throw StoreError.unsupportedVersion }
+        return archive.entries.sorted { $0.startedAt > $1.startedAt }
+    }
+
+    func save(_ entry: SessionHistoryEntry) throws {
+        var entries = try load()
+        guard !entries.contains(where: { $0.id == entry.id }) else { return }
+        entries.append(entry)
+        try write(entries)
+    }
+
+    func delete(id: UUID) throws {
+        var entries = try load()
+        entries.removeAll { $0.id == id }
+        try write(entries)
+    }
+
+    private func write(_ entries: [SessionHistoryEntry]) throws {
+        let data = try JSONEncoder().encode(Archive(version: 1, entries: entries))
+        try FileManager.default.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try data.write(to: fileURL, options: .atomic)
+    }
+}
