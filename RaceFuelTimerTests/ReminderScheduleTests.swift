@@ -3,6 +3,56 @@ import Testing
 import UserNotifications
 @testable import RaceFuelTimer
 
+private func 週次集計用履歴(_ start: Date, duration: TimeInterval = 900, early: Bool = false) throws -> SessionHistoryEntry {
+    let plan = ReminderPlan(hydration: .init(isEnabled: true, firstReminderMinutes: 10, repeatIntervalMinutes: 10),
+                            fuel: .init(isEnabled: false), notificationEndMinutes: 30)
+    var session = try Session(plan: plan, startedAt: start)
+    if early { session.record(.taken, reminderID: session.schedule[0].identifier, at: start) }
+    session.end(at: start.addingTimeInterval(duration))
+    return try #require(SessionHistoryEntry(session: session))
+}
+
+@Test("週の境界は開始以上終了未満で開始週に全時間を計上する")
+func 週の境界と週またぎの集計() throws {
+    // Arrange
+    var calendar = Calendar(identifier: .iso8601)
+    calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
+    let start = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 26)))
+    let end = try #require(calendar.date(byAdding: .day, value: 7, to: start))
+    let entries = try [週次集計用履歴(start.addingTimeInterval(-1)), 週次集計用履歴(start),
+                       週次集計用履歴(end.addingTimeInterval(-1), duration: 1200), 週次集計用履歴(end)]
+    // Act
+    let summary = try #require(WeeklyHistorySummary(entries: entries, now: start, calendar: calendar))
+    // Assert
+    #expect(summary.runCount == 2)
+    #expect(summary.elapsedSeconds == 2100)
+    #expect(summary.dueCount == 3)
+    #expect(summary.unrecordedCount == 3)
+}
+
+@Test("端末の時間帯で週を判定し先行記録と削除後の値を反映する")
+func 時間帯と先行記録と削除後の集計() throws {
+    // Arrange
+    var utc = Calendar(identifier: .iso8601)
+    utc.timeZone = try #require(TimeZone(secondsFromGMT: 0))
+    var japan = utc
+    japan.timeZone = try #require(TimeZone(secondsFromGMT: 9 * 3600))
+    let mondayUTC = try #require(utc.date(from: DateComponents(year: 2026, month: 10, day: 26)))
+    let entry = try 週次集計用履歴(mondayUTC.addingTimeInterval(-3600), duration: 300, early: true)
+    // Act
+    let japanSummary = try #require(WeeklyHistorySummary(entries: [entry], now: mondayUTC, calendar: japan))
+    let utcSummary = try #require(WeeklyHistorySummary(entries: [entry], now: mondayUTC, calendar: utc))
+    let deleted = try #require(WeeklyHistorySummary(entries: [], now: mondayUTC, calendar: japan))
+    // Assert
+    #expect(japanSummary.runCount == 1)
+    #expect(japanSummary.takenCount == 1)
+    #expect(japanSummary.dueCount == 0)
+    #expect(japanSummary.earlyRecordCount == 1)
+    #expect(utcSummary.runCount == 0)
+    #expect(deleted.runCount == 0)
+    #expect(deleted.elapsedSeconds == 0)
+}
+
 @Test("10分ごとの通知を終了予定まで生成する")
 func 十分ごとの通知を終了予定まで生成する() throws {
     // Arrange
