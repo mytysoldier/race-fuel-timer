@@ -368,18 +368,39 @@ private struct SessionHistoryView: View {
             if let errorMessage {
                 Text(errorMessage).foregroundStyle(.red)
                 Button("再読み込み", action: reload)
-            } else if entries.isEmpty {
-                Text("保存されたランはありません。")
-                    .foregroundStyle(.secondary)
             } else {
-                ForEach(entries) { entry in
-                    NavigationLink {
-                        SessionHistoryDetailView(entry: entry, onDelete: { delete(entry) })
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(entry.startedAt.formatted(date: .abbreviated, time: .shortened))
-                            Text(Duration.seconds(entry.summary.elapsedSeconds).formatted(.time(pattern: .hourMinuteSecond)))
-                                .foregroundStyle(.secondary)
+                if let weekly = WeeklyHistorySummary(entries: entries, now: .now, calendar: .current) {
+                    Section("今週の振り返り") {
+                        if weekly.runCount == 0 {
+                            Text("今週の記録はありません。")
+                        } else {
+                            LabeledContent("ラン", value: "\(weekly.runCount)回")
+                            LabeledContent("経過時間", value: Duration.seconds(weekly.elapsedSeconds).formatted(.time(pattern: .hourMinuteSecond)))
+                            LabeledContent("到来した予定", value: "\(weekly.dueCount)回")
+                            LabeledContent("摂った", value: "\(weekly.takenCount)回")
+                            LabeledContent("スキップ", value: "\(weekly.skippedCount)回")
+                            LabeledContent("到来済み・未記録", value: "\(weekly.unrecordedCount)回")
+                            LabeledContent("先行記録", value: "\(weekly.earlyRecordCount)回")
+                            Text("摂った・スキップには、未到来の予定への先行記録を含む場合があります。")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Text("このアプリで終了・保存したランを開始した週に集計します。")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                }
+                if entries.isEmpty {
+                    Text("保存されたランはありません。")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(entries) { entry in
+                        NavigationLink {
+                            SessionHistoryDetailView(entry: entry, onDelete: { delete(entry) })
+                        } label: {
+                            VStack(alignment: .leading) {
+                                Text(entry.startedAt.formatted(date: .abbreviated, time: .shortened))
+                                Text(Duration.seconds(entry.summary.elapsedSeconds).formatted(.time(pattern: .hourMinuteSecond)))
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
                 }

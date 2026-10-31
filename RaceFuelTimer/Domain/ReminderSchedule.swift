@@ -355,3 +355,25 @@ struct SessionHistoryEntry: Codable, Equatable, Identifiable {
         records = session.records.values.sorted { $0.recordedAt < $1.recordedAt }
     }
 }
+
+struct WeeklyHistorySummary {
+    let runCount: Int
+    let elapsedSeconds: TimeInterval
+    let dueCount: Int
+    let takenCount: Int
+    let skippedCount: Int
+    let unrecordedCount: Int
+    let earlyRecordCount: Int
+
+    init?(entries: [SessionHistoryEntry], now: Date, calendar: Calendar) {
+        guard let week = calendar.dateInterval(of: .weekOfYear, for: now) else { return nil }
+        let runs = entries.filter { $0.startedAt >= week.start && $0.startedAt < week.end }
+        runCount = runs.count
+        elapsedSeconds = runs.reduce(0) { $0 + $1.summary.elapsedSeconds }
+        dueCount = runs.reduce(0) { $0 + $1.summary.dueCount }
+        takenCount = runs.reduce(0) { $0 + $1.summary.takenCount }
+        skippedCount = runs.reduce(0) { $0 + $1.summary.skippedCount }
+        unrecordedCount = runs.reduce(0) { $0 + $1.summary.unrecordedCount }
+        earlyRecordCount = runs.reduce(0) { $0 + $1.summary.earlyRecordCount }
+    }
+}
