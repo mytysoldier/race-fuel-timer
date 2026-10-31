@@ -9,6 +9,7 @@ import CoreLocation
 struct ProbeView: View {
     @State private var background = ["sunrise", "forest"].randomElement() ?? "sunrise"
     @State private var points: [CLLocationCoordinate2D] = []
+    @State private var breakIndices: Set<Int> = []
     @State private var status = "架空のルートで表示中"
     @State private var selectedWorkout: HKWorkout?
     @State private var lineColor = "白"
@@ -29,7 +30,7 @@ struct ProbeView: View {
                             } else { Color.gray }
                             LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
-                                RouteShape(points: points.isEmpty ? sample : points, smoothSample: points.isEmpty)
+                                RouteShape(points: points.isEmpty ? sample : points, smoothSample: points.isEmpty, breakIndices: breakIndices)
                                     .stroke(routeColor, style: StrokeStyle(lineWidth: lineStyle == "太線" ? 6 : 3, lineCap: .round, lineJoin: .round, dash: lineStyle == "点線" ? [3, 8] : []))
                                     .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
                                     .padding(.horizontal, 25).padding(.vertical, 30)
@@ -87,7 +88,7 @@ struct ProbeView: View {
         }
     }
     func findRoute(_ workouts: [HKWorkout], index: Int) {
-        guard index < workouts.count else { DispatchQueue.main.async { points = []; selectedWorkout = nil; status = "ルート付きランが見つかりません。アクセス設定や記録を確認してください" }; return }
+        guard index < workouts.count else { DispatchQueue.main.async { points = []; breakIndices = []; selectedWorkout = nil; status = "ルート付きランが見つかりません。アクセス設定や記録を確認してください" }; return }
         let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: 1, sortDescriptors: nil) { _, samples, error in
             if error != nil { DispatchQueue.main.async { status = "ルートの読み込みに失敗" }; return }
             guard let route = samples?.first as? HKWorkoutRoute else { findRoute(workouts, index: index + 1); return }
@@ -95,7 +96,13 @@ struct ProbeView: View {
             let routeQuery = HKWorkoutRouteQuery(route: route) { _, batch, done, error in
                 if error != nil { DispatchQueue.main.async { status = "位置データの読み込みに失敗" }; return }
                 locations.append(contentsOf: batch ?? [])
-                if done { let result = locations.map(\.coordinate); DispatchQueue.main.async { points = result; selectedWorkout = workouts[index]; status = "HealthKitから \(result.count) 点を読み込みました" } }
+                if done {
+                    let result = RouteGapProbe.analyze(locations)
+                    DispatchQueue.main.async {
+                        points = result.points; breakIndices = result.breakIndices; selectedWorkout = workouts[index]
+                        status = "HealthKitから \(result.points.count) 点を読み込み、\(result.breakIndices.count) 箇所を分断候補として表示"
+                    }
+                }
             }
             store.execute(routeQuery)
         }
@@ -156,6 +163,7 @@ struct ProbeView: View {
 struct RouteShape: Shape {
     let points: [CLLocationCoordinate2D]
     let smoothSample: Bool
+    let breakIndices: Set<Int>
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let valid = points.filter { CLLocationCoordinate2DIsValid($0) }
@@ -176,8 +184,37 @@ struct RouteShape: Shape {
             }
             path.addLine(to: projected[projected.count - 1])
         } else {
-            for point in projected.dropFirst() { path.addLine(to: point) }
+            for index in 1..<projected.count {
+                if breakIndices.contains(index) { path.move(to: projected[index]) } else { path.addLine(to: projected[index]) }
+            }
         }
         return path
+    }
+}
+
+// 試験用の仮閾値。実際の走行データでの誤判定率は未検証。
+enum RouteGapProbe {
+    static func analyze(_ locations: [CLLocation]) -> (points: [CLLocationCoordinate2D], breakIndices: Set<Int>) {
+        var points: [CLLocationCoordinate2D] = []
+        var breaks: Set<Int> = []
+        var previous: CLLocation?
+        for location in locations {
+            guard CLLocationCoordinate2DIsValid(location.coordinate), location.horizontalAccuracy >= 0 else {
+                previous = nil
+                continue
+            }
+            if let previous {
+                let seconds = location.timestamp.timeIntervalSince(previous.timestamp)
+                let distance = location.distance(from: previous)
+                if seconds <= 0 || (distance > 100 && distance / seconds > 12) || (seconds > 120 && distance > 50) {
+                    breaks.insert(points.count)
+                }
+            } else if !points.isEmpty {
+                breaks.insert(points.count)
+            }
+            points.append(location.coordinate)
+            previous = location
+        }
+        return (points, breaks)
     }
 }
