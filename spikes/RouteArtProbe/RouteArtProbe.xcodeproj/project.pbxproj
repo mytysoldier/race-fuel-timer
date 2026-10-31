@@ -1,0 +1,21 @@
+// !$*UTF8*$!
+{ archiveVersion = 1; classes = {}; objectVersion = 56; objects = {
+000000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Probe.swift; sourceTree = "<group>"; };
+000000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = folder; path = Images; sourceTree = "<group>"; };
+000000000000000000000003 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = RouteArtProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+000000000000000000000004 = {isa = PBXBuildFile; fileRef = 000000000000000000000001; };
+000000000000000000000005 = {isa = PBXBuildFile; fileRef = 000000000000000000000002; };
+000000000000000000000006 = {isa = PBXGroup; children = (000000000000000000000001,000000000000000000000002,000000000000000000000007,); sourceTree = "<group>"; };
+000000000000000000000007 = {isa = PBXGroup; children = (000000000000000000000003,); name = Products; sourceTree = "<group>"; };
+000000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000004,); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000009 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000005,); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000010 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000011 = {isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000016; buildPhases = (000000000000000000000008,000000000000000000000010,000000000000000000000009,); buildRules = (); dependencies = (); name = RouteArtProbe; productName = RouteArtProbe; productReference = 000000000000000000000003; productType = "com.apple.product-type.application"; };
+000000000000000000000012 = {isa = PBXProject; attributes = {LastUpgradeCheck = 2600;}; buildConfigurationList = 000000000000000000000017; compatibilityVersion = "Xcode 14.0"; developmentRegion = ja; knownRegions = (ja,Base,); mainGroup = 000000000000000000000006; productRefGroup = 000000000000000000000007; targets = (000000000000000000000011,); };
+000000000000000000000013 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SWIFT_VERSION = 5.9; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RouteArtProbe; INFOPLIST_KEY_NSHealthShareUsageDescription = "ランのルートを作品にする検証に使います。"; INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Simulator用の架空のランを作成します。"; CODE_SIGN_ENTITLEMENTS = Probe.entitlements; }; name = Debug; };
+000000000000000000000014 = {isa = XCBuildConfiguration; buildSettings = {CLANG_ENABLE_MODULES = YES; SWIFT_VERSION = 5.9; IPHONEOS_DEPLOYMENT_TARGET = 17.0; SDKROOT = iphoneos; TARGETED_DEVICE_FAMILY = 1; CODE_SIGN_STYLE = Automatic; GENERATE_INFOPLIST_FILE = YES; INFOPLIST_KEY_UILaunchScreen_Generation = YES; PRODUCT_NAME = "$(TARGET_NAME)"; PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RouteArtProbe; INFOPLIST_KEY_NSHealthShareUsageDescription = "ランのルートを作品にする検証に使います。"; INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Simulator用の架空のランを作成します。"; CODE_SIGN_ENTITLEMENTS = Probe.entitlements; }; name = Release; };
+000000000000000000000015 = {isa = XCBuildConfiguration; buildSettings = {}; name = Debug; };
+000000000000000000000018 = {isa = XCBuildConfiguration; buildSettings = {}; name = Release; };
+000000000000000000000016 = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000013,000000000000000000000014,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+000000000000000000000017 = {isa = XCConfigurationList; buildConfigurations = (000000000000000000000015,000000000000000000000018,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+}; rootObject = 000000000000000000000012; }
