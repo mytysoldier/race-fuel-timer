@@ -47,7 +47,10 @@ struct ProbeView: View {
                     Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
 #if targetEnvironment(simulator)
-                    Button("Simulatorに架空のランを追加") { seed() }.buttonStyle(.bordered)
+                    Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
+                    Button("ルートなしランを追加") { seed(.noRoute) }.buttonStyle(.bordered)
+                    Button("長い架空ルートを追加") { seed(.long) }.buttonStyle(.bordered)
+                    Button("欠損のある架空ルートを追加") { seed(.gap) }.buttonStyle(.bordered)
 #endif
                     Text("検証用：写真とルートはサンプルです。保存・共有は未実装です。") .font(.caption).foregroundStyle(.secondary)
                 }.padding()
@@ -102,15 +105,33 @@ struct ProbeView: View {
             }
         } + [sample.last!]
     }
-    func seed() {
+    enum Fixture { case normal, noRoute, long, gap }
+    func seed(_ fixture: Fixture) {
         authorize(write: true) { ok in
             guard ok else { return }
             let end = Date(), start = end.addingTimeInterval(-1800)
             let workout = HKWorkout(activityType: .running, start: start, end: end)
             store.save(workout) { success, error in
                 guard success else { DispatchQueue.main.async { status = "架空ランの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
+                if fixture == .noRoute {
+                    DispatchQueue.main.async { status = "ルートなしランを追加しました。読み込みを押してください" }
+                    return
+                }
                 let builder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
-                let positions = denseSample().enumerated().map { i, p in CLLocation(coordinate: CLLocationCoordinate2D(latitude: 35 + p.latitude * 0.01, longitude: 139 + p.longitude * 0.01), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: start.addingTimeInterval(Double(i) * 2)) }
+                let source = denseSample()
+                let coordinates: [CLLocationCoordinate2D]
+                if fixture == .long {
+                    coordinates = (0..<50).flatMap { lap in
+                        source.map { CLLocationCoordinate2D(latitude: $0.latitude + Double(lap) * 0.02, longitude: $0.longitude) }
+                    }
+                } else if fixture == .gap {
+                    coordinates = Array(source.prefix(40)) + source.suffix(40).map {
+                        CLLocationCoordinate2D(latitude: $0.latitude + 2, longitude: $0.longitude + 2)
+                    }
+                } else {
+                    coordinates = source
+                }
+                let positions = coordinates.enumerated().map { i, p in CLLocation(coordinate: CLLocationCoordinate2D(latitude: 35 + p.latitude * 0.01, longitude: 139 + p.longitude * 0.01), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: start.addingTimeInterval(Double(i) * 1800 / Double(max(coordinates.count, 1)))) }
                 builder.insertRouteData(positions) { success, error in
                     guard success else { DispatchQueue.main.async { status = "架空ルートの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
                     builder.finishRoute(with: workout, metadata: nil) { _, error in DispatchQueue.main.async { status = error == nil ? "架空ランを追加しました。読み込みを押してください" : "ルート作成失敗: \(error!.localizedDescription)" } }
