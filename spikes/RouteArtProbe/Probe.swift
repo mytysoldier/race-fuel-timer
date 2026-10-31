@@ -11,6 +11,11 @@ struct ProbeView: View {
     @State private var points: [CLLocationCoordinate2D] = []
     @State private var status = "架空のルートで表示中"
     @State private var selectedWorkout: HKWorkout?
+    @State private var lineColor = "白"
+    @State private var lineStyle = "実線"
+    private var routeColor: Color {
+        switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
+    }
     private let store = HKHealthStore()
     private let sample = [(0.1,0.3),(0.2,0.18),(0.42,0.12),(0.52,0.3),(0.7,0.25),(0.88,0.42),(0.75,0.58),(0.82,0.78),(0.58,0.9),(0.4,0.7),(0.21,0.82),(0.1,0.6),(0.1,0.3)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }
     var body: some View {
@@ -25,8 +30,8 @@ struct ProbeView: View {
                             LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
                                 RouteShape(points: points.isEmpty ? sample : points, smoothSample: points.isEmpty)
-                                    .stroke(.white, style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
-                                    .shadow(color: .black.opacity(0.65), radius: 3)
+                                    .stroke(routeColor, style: StrokeStyle(lineWidth: lineStyle == "太線" ? 6 : 3, lineCap: .round, lineJoin: .round, dash: lineStyle == "点線" ? [3, 8] : []))
+                                    .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
                                     .padding(.horizontal, 25).padding(.vertical, 30)
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 VStack(spacing: 7) {
@@ -45,9 +50,18 @@ struct ProbeView: View {
                     Text(status).font(.footnote)
                     Button("背景を変更") { background = background == "sunrise" ? "forest" : "sunrise" }.buttonStyle(.borderedProminent)
                     Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
+                    Picker("線の色", selection: $lineColor) {
+                        Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
+                    }.pickerStyle(.segmented)
+                    Picker("線の見た目", selection: $lineStyle) {
+                        Text("実線").tag("実線"); Text("点線").tag("点線"); Text("太線").tag("太線"); Text("光る線").tag("光る線")
+                    }.pickerStyle(.segmented)
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
 #if targetEnvironment(simulator)
-                    Button("Simulatorに架空のランを追加") { seed() }.buttonStyle(.bordered)
+                    Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
+                    Button("ルートなしランを追加") { seed(.noRoute) }.buttonStyle(.bordered)
+                    Button("長い架空ルートを追加") { seed(.long) }.buttonStyle(.bordered)
+                    Button("欠損のある架空ルートを追加") { seed(.gap) }.buttonStyle(.bordered)
 #endif
                     Text("検証用：写真とルートはサンプルです。保存・共有は未実装です。") .font(.caption).foregroundStyle(.secondary)
                 }.padding()
@@ -102,15 +116,33 @@ struct ProbeView: View {
             }
         } + [sample.last!]
     }
-    func seed() {
+    enum Fixture { case normal, noRoute, long, gap }
+    func seed(_ fixture: Fixture) {
         authorize(write: true) { ok in
             guard ok else { return }
             let end = Date(), start = end.addingTimeInterval(-1800)
             let workout = HKWorkout(activityType: .running, start: start, end: end)
             store.save(workout) { success, error in
                 guard success else { DispatchQueue.main.async { status = "架空ランの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
+                if fixture == .noRoute {
+                    DispatchQueue.main.async { status = "ルートなしランを追加しました。読み込みを押してください" }
+                    return
+                }
                 let builder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
-                let positions = denseSample().enumerated().map { i, p in CLLocation(coordinate: CLLocationCoordinate2D(latitude: 35 + p.latitude * 0.01, longitude: 139 + p.longitude * 0.01), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: start.addingTimeInterval(Double(i) * 2)) }
+                let source = denseSample()
+                let coordinates: [CLLocationCoordinate2D]
+                if fixture == .long {
+                    coordinates = (0..<50).flatMap { lap in
+                        source.map { CLLocationCoordinate2D(latitude: $0.latitude + Double(lap) * 0.02, longitude: $0.longitude) }
+                    }
+                } else if fixture == .gap {
+                    coordinates = Array(source.prefix(40)) + source.suffix(40).map {
+                        CLLocationCoordinate2D(latitude: $0.latitude + 2, longitude: $0.longitude + 2)
+                    }
+                } else {
+                    coordinates = source
+                }
+                let positions = coordinates.enumerated().map { i, p in CLLocation(coordinate: CLLocationCoordinate2D(latitude: 35 + p.latitude * 0.01, longitude: 139 + p.longitude * 0.01), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: start.addingTimeInterval(Double(i) * 1800 / Double(max(coordinates.count, 1)))) }
                 builder.insertRouteData(positions) { success, error in
                     guard success else { DispatchQueue.main.async { status = "架空ルートの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
                     builder.finishRoute(with: workout, metadata: nil) { _, error in DispatchQueue.main.async { status = error == nil ? "架空ランを追加しました。読み込みを押してください" : "ルート作成失敗: \(error!.localizedDescription)" } }
