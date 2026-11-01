@@ -16,10 +16,20 @@ struct ProbeView: View {
     @State private var selectedWorkout: HKWorkout?
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
+    @State private var hideEndpoints = false
     @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
+    }
+    private var artworkRoute: (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
+        let input = points.isEmpty ? sample : points
+        let originalBreaks = points.isEmpty ? Set<Int>() : breakIndices
+        return hideEndpoints ? RoutePrivacyProbe.mask(input, breaks: originalBreaks, radius: 200) : (input, originalBreaks)
+    }
+    private var hasVisibleLine: Bool {
+        let route = artworkRoute
+        return route.points.count > 1 && (1..<route.points.count).contains { !route.breaks.contains($0) }
     }
     private let store = HKHealthStore()
     private let sample = [(0.1,0.3),(0.2,0.18),(0.42,0.12),(0.52,0.3),(0.7,0.25),(0.88,0.42),(0.75,0.58),(0.82,0.78),(0.58,0.9),(0.4,0.7),(0.21,0.82),(0.1,0.6),(0.1,0.3)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }
@@ -37,12 +47,18 @@ struct ProbeView: View {
                     Picker("線の見た目", selection: $lineStyle) {
                         Text("実線").tag("実線"); Text("点線").tag("点線"); Text("太線").tag("太線"); Text("光る線").tag("光る線")
                     }.pickerStyle(.segmented)
-                    Text("ルートの形から場所が推測される可能性があります。保存・共有前に画像をご確認ください。")
+                    Toggle("開始・終了地点の周囲を隠す（検証用・約200m）", isOn: $hideEndpoints)
+                    if hideEndpoints && !hasVisibleLine {
+                        Text("表示できるルートが残りません。設定を変更してください。")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Text("一部を隠しても、ルートの形などから場所が推測される可能性があります。保存・共有前に画像をご確認ください。")
                         .font(.caption).foregroundStyle(.secondary)
                     HStack {
                         Button("写真に保存") { saveImage() }.buttonStyle(.borderedProminent)
                         Button("共有") { prepareShare() }.buttonStyle(.bordered)
                     }
+                    .disabled(hideEndpoints && !hasVisibleLine)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
 #if targetEnvironment(simulator)
@@ -69,7 +85,7 @@ struct ProbeView: View {
                             } else { Color.gray }
                             LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
-                                RouteShape(points: points.isEmpty ? sample : points, smoothSample: points.isEmpty, breakIndices: breakIndices)
+                                RouteShape(points: artworkRoute.points, smoothSample: points.isEmpty && !hideEndpoints, breakIndices: artworkRoute.breaks)
                                     .stroke(routeColor, style: StrokeStyle(lineWidth: lineStyle == "太線" ? 6 : 3, lineCap: .round, lineJoin: .round, dash: lineStyle == "点線" ? [3, 8] : []))
                                     .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
                                     .padding(.horizontal, 25).padding(.vertical, 30)
@@ -280,4 +296,39 @@ struct ShareSheet: UIViewControllerRepresentable {
         return controller
     }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+// 評価用の保守的な試案。開始・終了点から半径内の点と、円を横切る線分を描かない。
+// 位置特定や、他の訪問による露出を完全に防ぐものではない。
+enum RoutePrivacyProbe {
+    static func mask(_ points: [CLLocationCoordinate2D], breaks: Set<Int>, radius: CLLocationDistance) -> (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
+        guard points.count > 1, radius > 0 else { return ([], []) }
+        let centers = [points[0], points[points.count - 1]]
+        func location(_ point: CLLocationCoordinate2D) -> CLLocation { CLLocation(latitude: point.latitude, longitude: point.longitude) }
+        func inside(_ point: CLLocationCoordinate2D) -> Bool {
+            centers.contains { location(point).distance(from: location($0)) <= radius }
+        }
+        // 三角不等式で円への到達があり得る線分も除く。安全側に広く隠れる場合がある。
+        func mightCross(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
+            let segment = location(a).distance(from: location(b))
+            return centers.contains { center in
+                let c = location(center)
+                return max(0, (c.distance(from: location(a)) + c.distance(from: location(b)) - segment) / 2) <= radius
+            }
+        }
+        var output: [CLLocationCoordinate2D] = []
+        var outputBreaks: Set<Int> = []
+        var previousIndex: Int?
+        for (index, point) in points.enumerated() {
+            guard CLLocationCoordinate2DIsValid(point), !inside(point) else { previousIndex = nil; continue }
+            if !output.isEmpty {
+                if let previousIndex, previousIndex + 1 == index, !breaks.contains(index), !mightCross(points[previousIndex], point) {
+                    // この線分は両端の保護範囲に入らない。
+                } else { outputBreaks.insert(output.count) }
+            }
+            output.append(point)
+            previousIndex = index
+        }
+        return (output, outputBreaks)
+    }
 }
