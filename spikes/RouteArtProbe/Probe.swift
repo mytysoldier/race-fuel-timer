@@ -23,6 +23,9 @@ struct ProbeView: View {
     @State private var hasRequestedRoute = false
     @State private var needsRefresh = false
     @State private var requestID = UUID()
+#if targetEnvironment(simulator)
+    @State private var pendingWorkout: HKWorkout?
+#endif
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
     }
@@ -68,6 +71,8 @@ struct ProbeView: View {
 #if targetEnvironment(simulator)
                     Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
                     Button("ルートなしランを追加") { seed(.noRoute) }.buttonStyle(.bordered)
+                    Button("直前のルートなしランにルートを追加") { addDelayedRoute() }
+                        .buttonStyle(.bordered).disabled(pendingWorkout == nil)
                     Button("長い架空ルートを追加") { seed(.long) }.buttonStyle(.bordered)
                     Button("欠損のある架空ルートを追加") { seed(.gap) }.buttonStyle(.bordered)
 #endif
@@ -231,7 +236,10 @@ struct ProbeView: View {
             store.save(workout) { success, error in
                 guard success else { DispatchQueue.main.async { status = "架空ランの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
                 if fixture == .noRoute {
-                    DispatchQueue.main.async { status = "ルートなしランを追加しました。読み込みを押してください" }
+                    DispatchQueue.main.async {
+                        pendingWorkout = workout
+                        status = "ルートなしランを追加しました。読み込みを押してください"
+                    }
                     return
                 }
                 let builder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
@@ -252,6 +260,27 @@ struct ProbeView: View {
                 builder.insertRouteData(positions) { success, error in
                     guard success else { DispatchQueue.main.async { status = "架空ルートの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
                     builder.finishRoute(with: workout, metadata: nil) { _, error in DispatchQueue.main.async { status = error == nil ? "架空ランを追加しました。読み込みを押してください" : "ルート作成失敗: \(error!.localizedDescription)" } }
+                }
+            }
+        }
+    }
+    func addDelayedRoute() {
+        guard let workout = pendingWorkout else { return }
+        pendingWorkout = nil
+        let coordinates = denseSample().enumerated().compactMap { $0.offset.isMultiple(of: 2) ? $0.element : nil }
+        let positions = coordinates.enumerated().map { index, point in
+            CLLocation(coordinate: CLLocationCoordinate2D(latitude: 35 + point.latitude * 0.01, longitude: 139 + point.longitude * 0.01), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: workout.startDate.addingTimeInterval(Double(index) * workout.duration / Double(max(coordinates.count, 1))))
+        }
+        let builder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
+        builder.insertRouteData(positions) { success, error in
+            guard success else {
+                DispatchQueue.main.async { pendingWorkout = workout; status = "架空ルートの保存失敗: \(error?.localizedDescription ?? "不明")" }
+                return
+            }
+            builder.finishRoute(with: workout, metadata: nil) { _, error in
+                DispatchQueue.main.async {
+                    if let error { pendingWorkout = workout; status = "ルート作成失敗: \(error.localizedDescription)" }
+                    else { status = "後からルートを追加しました。読み込みを押してください" }
                 }
             }
         }
