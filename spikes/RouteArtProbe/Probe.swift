@@ -72,6 +72,7 @@ struct ProbeView: View {
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
 #if targetEnvironment(simulator)
                     Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
+                    Button("2本の架空ルート付きランを追加") { seed(.multiple) }.buttonStyle(.bordered)
                     Button("ルートなしランを追加") { seed(.noRoute) }.buttonStyle(.bordered)
                     Button("直前のルートなしランにルートを追加") { addDelayedRoute() }
                         .buttonStyle(.bordered).disabled(pendingWorkout == nil)
@@ -259,7 +260,7 @@ struct ProbeView: View {
             }
         } + [sample.last!]
     }
-    enum Fixture { case normal, noRoute, long, gap }
+    enum Fixture { case normal, noRoute, long, gap, multiple }
     func seed(_ fixture: Fixture) {
         authorize(write: true) { ok in
             guard ok else { return }
@@ -291,7 +292,32 @@ struct ProbeView: View {
                 let positions = coordinates.enumerated().map { i, p in CLLocation(coordinate: CLLocationCoordinate2D(latitude: 35 + p.latitude * 0.01, longitude: 139 + p.longitude * 0.01), altitude: 0, horizontalAccuracy: 5, verticalAccuracy: 5, timestamp: start.addingTimeInterval(Double(i) * 1800 / Double(max(coordinates.count, 1)))) }
                 builder.insertRouteData(positions) { success, error in
                     guard success else { DispatchQueue.main.async { status = "架空ルートの保存失敗: \(error?.localizedDescription ?? "不明")" }; return }
-                    builder.finishRoute(with: workout, metadata: nil) { _, error in DispatchQueue.main.async { status = error == nil ? "架空ランを追加しました。読み込みを押してください" : "ルート作成失敗: \(error!.localizedDescription)" } }
+                    builder.finishRoute(with: workout, metadata: nil) { _, error in
+                        if let error {
+                            DispatchQueue.main.async { status = "ルート作成失敗: \(error.localizedDescription)" }
+                        } else if fixture == .multiple {
+                            addSecondFixtureRoute(to: workout, positions: positions)
+                        } else {
+                            DispatchQueue.main.async { status = "架空ランを追加しました。読み込みを押してください" }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // 最初のルート保存後に同じランへ別の61点のルートを追加する。
+    func addSecondFixtureRoute(to workout: HKWorkout, positions: [CLLocation]) {
+        let second = positions.enumerated().compactMap { $0.offset.isMultiple(of: 2) ? $0.element : nil }
+        let builder = HKWorkoutRouteBuilder(healthStore: store, device: nil)
+        builder.insertRouteData(second) { success, error in
+            guard success else {
+                DispatchQueue.main.async { status = "2本目のルート保存失敗: \(error?.localizedDescription ?? "不明")" }
+                return
+            }
+            builder.finishRoute(with: workout, metadata: nil) { route, error in
+                DispatchQueue.main.async {
+                    if route != nil && error == nil { status = "2本の架空ルートを追加しました。読み込みを押してください" }
+                    else { status = "2本目のルート作成失敗: \(error?.localizedDescription ?? "不明")" }
                 }
             }
         }
