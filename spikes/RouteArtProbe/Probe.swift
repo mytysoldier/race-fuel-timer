@@ -9,6 +9,7 @@ import UIKit
 }
 
 struct ProbeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @State private var background = ["sunrise", "forest"].randomElement() ?? "sunrise"
     @State private var points: [CLLocationCoordinate2D] = []
     @State private var breakIndices: Set<Int> = []
@@ -19,12 +20,15 @@ struct ProbeView: View {
     @State private var hideEndpoints = false
     @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
+    @State private var hasRequestedRoute = false
+    @State private var needsRefresh = false
+    @State private var requestID = UUID()
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
     }
     private var artworkRoute: (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
-        let input = points.isEmpty ? sample : points
-        let originalBreaks = points.isEmpty ? Set<Int>() : breakIndices
+        let input = hasRequestedRoute ? points : sample
+        let originalBreaks = hasRequestedRoute ? breakIndices : Set<Int>()
         return hideEndpoints ? RoutePrivacyProbe.mask(input, breaks: originalBreaks, radius: 200) : (input, originalBreaks)
     }
     private var hasVisibleLine: Bool {
@@ -58,7 +62,7 @@ struct ProbeView: View {
                         Button("写真に保存") { saveImage() }.buttonStyle(.borderedProminent)
                         Button("共有") { prepareShare() }.buttonStyle(.bordered)
                     }
-                    .disabled(hideEndpoints && !hasVisibleLine)
+                    .disabled(!hasVisibleLine)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
 #if targetEnvironment(simulator)
@@ -76,6 +80,17 @@ struct ProbeView: View {
                     }
                 }
         }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background && hasRequestedRoute {
+                requestID = UUID()
+                points = []; breakIndices = []; selectedWorkout = nil
+                status = "ルートを再確認します"
+                needsRefresh = true
+            } else if phase == .active && needsRefresh {
+                needsRefresh = false
+                read()
+            }
+        }
     }
     private var artwork: some View {
         GeometryReader { geometry in
@@ -85,7 +100,7 @@ struct ProbeView: View {
                             } else { Color.gray }
                             LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
-                                RouteShape(points: artworkRoute.points, smoothSample: points.isEmpty && !hideEndpoints, breakIndices: artworkRoute.breaks)
+                                RouteShape(points: artworkRoute.points, smoothSample: !hasRequestedRoute && !hideEndpoints, breakIndices: artworkRoute.breaks)
                                     .stroke(routeColor, style: StrokeStyle(lineWidth: lineStyle == "太線" ? 6 : 3, lineCap: .round, lineJoin: .round, dash: lineStyle == "点線" ? [3, 8] : []))
                                     .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
                                     .padding(.horizontal, 25).padding(.vertical, 30)
@@ -98,7 +113,7 @@ struct ProbeView: View {
                                     if let workout = selectedWorkout {
                                         Text(workout.endDate, format: .dateTime.year().month().day()).font(.caption)
                                         Text("時間 \(Int(workout.duration / 60))分").font(.caption)
-                                    } else { Text("サンプル").font(.caption) }
+                                    } else if !hasRequestedRoute { Text("サンプル").font(.caption) }
                                 }.foregroundStyle(.white).padding(.bottom, 24)
                             }
                         }.frame(width: geometry.size.width, height: geometry.size.height).clipped().clipShape(RoundedRectangle(cornerRadius: 16))
@@ -132,42 +147,63 @@ struct ProbeView: View {
         shareImage = ExportImage(image: image)
     }
 
-    func authorize(write: Bool, completion: @escaping (Bool) -> Void) {
-        guard HKHealthStore.isHealthDataAvailable() else { DispatchQueue.main.async { status = "HealthKitを利用できません" }; return }
+    func authorize(write: Bool, isCurrent: @escaping () -> Bool = { true }, completion: @escaping (Bool) -> Void) {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            DispatchQueue.main.async { if isCurrent() { status = "HealthKitを利用できません"; completion(false) } }
+            return
+        }
         let workout = HKObjectType.workoutType(), route = HKSeriesType.workoutRoute()
         store.requestAuthorization(toShare: write ? [workout, route] : [], read: [workout, route]) { ok, error in
-            DispatchQueue.main.async { if let error { status = "権限要求エラー: \(error.localizedDescription)" }; completion(ok && error == nil) }
+            DispatchQueue.main.async {
+                guard isCurrent() else { return }
+                if let error { status = "権限要求エラー: \(error.localizedDescription)" }
+                completion(ok && error == nil)
+            }
         }
     }
     func read() {
-        authorize(write: false) { ok in
-            guard ok else { return }
+        hasRequestedRoute = true
+        let currentRequest = UUID()
+        requestID = currentRequest
+        points = []; breakIndices = []; selectedWorkout = nil
+        exportMessage = ""
+        status = "ルートを読み込み中"
+        authorize(write: false, isCurrent: { currentRequest == requestID }) { ok in
+            guard currentRequest == requestID, ok else { return }
             let predicate = HKQuery.predicateForWorkouts(with: .running)
             let query = HKSampleQuery(sampleType: HKObjectType.workoutType(), predicate: predicate, limit: 30, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]) { _, samples, error in
-                guard let workouts = samples as? [HKWorkout], error == nil else { DispatchQueue.main.async { status = "ランの読み込みに失敗" }; return }
-                findRoute(workouts, index: 0)
+                DispatchQueue.main.async {
+                    guard currentRequest == requestID else { return }
+                    guard let workouts = samples as? [HKWorkout], error == nil else { status = "ランの読み込みに失敗"; return }
+                    findRoute(workouts, index: 0, request: currentRequest)
+                }
             }
             store.execute(query)
         }
     }
-    func findRoute(_ workouts: [HKWorkout], index: Int) {
-        guard index < workouts.count else { DispatchQueue.main.async { points = []; breakIndices = []; selectedWorkout = nil; status = "ルート付きランが見つかりません。アクセス設定や記録を確認してください" }; return }
+    func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID) {
+        guard request == requestID else { return }
+        guard index < workouts.count else { status = "ルート付きランが見つかりません。アクセス設定や記録を確認してください"; return }
         let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: 1, sortDescriptors: nil) { _, samples, error in
-            if error != nil { DispatchQueue.main.async { status = "ルートの読み込みに失敗" }; return }
-            guard let route = samples?.first as? HKWorkoutRoute else { findRoute(workouts, index: index + 1); return }
+            DispatchQueue.main.async {
+            guard request == requestID else { return }
+            if error != nil { status = "ルートの読み込みに失敗"; return }
+            guard let route = samples?.first as? HKWorkoutRoute else { findRoute(workouts, index: index + 1, request: request); return }
             var locations: [CLLocation] = []
             let routeQuery = HKWorkoutRouteQuery(route: route) { _, batch, done, error in
-                if error != nil { DispatchQueue.main.async { status = "位置データの読み込みに失敗" }; return }
-                locations.append(contentsOf: batch ?? [])
-                if done {
-                    let result = RouteGapProbe.analyze(locations)
-                    DispatchQueue.main.async {
+                DispatchQueue.main.async {
+                    guard request == requestID else { return }
+                    if error != nil { status = "位置データの読み込みに失敗"; return }
+                    locations.append(contentsOf: batch ?? [])
+                    if done {
+                        let result = RouteGapProbe.analyze(locations)
                         points = result.points; breakIndices = result.breakIndices; selectedWorkout = workouts[index]
                         status = "HealthKitから \(result.points.count) 点を読み込み、\(result.breakIndices.count) 箇所を分断候補として表示"
                     }
                 }
             }
             store.execute(routeQuery)
+            }
         }
         store.execute(query)
     }
