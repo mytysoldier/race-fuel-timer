@@ -222,25 +222,39 @@ struct ProbeView: View {
     func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID) {
         guard request == requestID else { return }
         guard index < workouts.count else { status = "ルート付きランが見つかりません。アクセス設定や記録を確認してください"; return }
-        let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: 1, sortDescriptors: nil) { _, samples, error in
+        let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
             DispatchQueue.main.async {
             guard request == requestID else { return }
             if error != nil { status = "ルートの読み込みに失敗"; return }
-            guard let route = samples?.first as? HKWorkoutRoute else { findRoute(workouts, index: index + 1, request: request); return }
-            var locations: [CLLocation] = []
-            let routeQuery = HKWorkoutRouteQuery(route: route) { _, batch, done, error in
-                DispatchQueue.main.async {
-                    guard request == requestID else { return }
-                    if error != nil { status = "位置データの読み込みに失敗"; return }
-                    locations.append(contentsOf: batch ?? [])
-                    if done {
-                        let result = RouteGapProbe.analyze(locations)
-                        points = result.points; breakIndices = result.breakIndices; selectedWorkout = workouts[index]
-                        status = "HealthKitから \(result.points.count) 点を読み込み、\(result.breakIndices.count) 箇所を分断候補として表示"
-                    }
-                }
+            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + 1, request: request); return }
+            let ordered = routes.sorted { a, b in
+                a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
             }
-            store.execute(routeQuery)
+            readRoutes(ordered, index: 0, workout: workouts[index], request: request, accumulated: [], breaks: [])
+            }
+        }
+        store.execute(query)
+    }
+    // ルートごとに全バッチを読み、異なるルート間は線で結ばない。
+    func readRoutes(_ routes: [HKWorkoutRoute], index: Int, workout: HKWorkout, request: UUID, accumulated: [CLLocationCoordinate2D], breaks: Set<Int>) {
+        guard request == requestID else { return }
+        guard index < routes.count else {
+            points = accumulated; breakIndices = breaks; selectedWorkout = workout
+            status = "HealthKitから \(accumulated.count) 点を読み込み、\(breaks.count) 箇所を分断候補として表示"
+            return
+        }
+        var locations: [CLLocation] = []
+        let query = HKWorkoutRouteQuery(route: routes[index]) { _, batch, done, error in
+            DispatchQueue.main.async {
+                guard request == requestID else { return }
+                if error != nil { status = "位置データの読み込みに失敗"; return }
+                locations.append(contentsOf: batch ?? [])
+                guard done else { return }
+                let result = RouteGapProbe.analyze(locations)
+                var nextBreaks = breaks
+                if !accumulated.isEmpty && !result.points.isEmpty { nextBreaks.insert(accumulated.count) }
+                nextBreaks.formUnion(result.breakIndices.map { $0 + accumulated.count })
+                readRoutes(routes, index: index + 1, workout: workout, request: request, accumulated: accumulated + result.points, breaks: nextBreaks)
             }
         }
         store.execute(query)
