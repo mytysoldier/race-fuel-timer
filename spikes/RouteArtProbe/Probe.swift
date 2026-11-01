@@ -1,6 +1,8 @@
 import SwiftUI
 import HealthKit
 import CoreLocation
+import Photos
+import UIKit
 
 @main struct RouteArtProbe: App {
     var body: some Scene { WindowGroup { ProbeView() } }
@@ -14,6 +16,8 @@ struct ProbeView: View {
     @State private var selectedWorkout: HKWorkout?
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
+    @State private var shareImage: ExportImage?
+    @State private var exportMessage = ""
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
     }
@@ -23,7 +27,42 @@ struct ProbeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
-                    GeometryReader { geometry in
+                    artwork.aspectRatio(4.0 / 5.0, contentMode: .fit)
+                    Text(status).font(.footnote)
+                    Button("背景を変更") { background = background == "sunrise" ? "forest" : "sunrise" }.buttonStyle(.borderedProminent)
+                    Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
+                    Picker("線の色", selection: $lineColor) {
+                        Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
+                    }.pickerStyle(.segmented)
+                    Picker("線の見た目", selection: $lineStyle) {
+                        Text("実線").tag("実線"); Text("点線").tag("点線"); Text("太線").tag("太線"); Text("光る線").tag("光る線")
+                    }.pickerStyle(.segmented)
+                    Text("ルートの形から場所が推測される可能性があります。保存・共有前に画像をご確認ください。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    HStack {
+                        Button("写真に保存") { saveImage() }.buttonStyle(.borderedProminent)
+                        Button("共有") { prepareShare() }.buttonStyle(.bordered)
+                    }
+                    if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
+                    Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
+#if targetEnvironment(simulator)
+                    Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
+                    Button("ルートなしランを追加") { seed(.noRoute) }.buttonStyle(.bordered)
+                    Button("長い架空ルートを追加") { seed(.long) }.buttonStyle(.bordered)
+                    Button("欠損のある架空ルートを追加") { seed(.gap) }.buttonStyle(.bordered)
+#endif
+                    Text("検証用：背景はサンプルです。HealthKit未読込時のルートも架空です。") .font(.caption).foregroundStyle(.secondary)
+                }.padding()
+            }.navigationTitle("ルートアート検証")
+                .sheet(item: $shareImage) { item in
+                    ShareSheet(image: item.image) { completed in
+                        exportMessage = completed ? "共有先での処理が完了しました" : "共有は完了していません"
+                    }
+                }
+        }
+    }
+    private var artwork: some View {
+        GeometryReader { geometry in
                         ZStack {
                             if let path = Bundle.main.path(forResource: background, ofType: "jpg", inDirectory: "Images"), let image = UIImage(contentsOfFile: path) {
                                 Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: geometry.size.height).clipped()
@@ -47,28 +86,36 @@ struct ProbeView: View {
                                 }.foregroundStyle(.white).padding(.bottom, 24)
                             }
                         }.frame(width: geometry.size.width, height: geometry.size.height).clipped().clipShape(RoundedRectangle(cornerRadius: 16))
-                    }.aspectRatio(4.0 / 5.0, contentMode: .fit)
-                    Text(status).font(.footnote)
-                    Button("背景を変更") { background = background == "sunrise" ? "forest" : "sunrise" }.buttonStyle(.borderedProminent)
-                    Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
-                    Picker("線の色", selection: $lineColor) {
-                        Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
-                    }.pickerStyle(.segmented)
-                    Picker("線の見た目", selection: $lineStyle) {
-                        Text("実線").tag("実線"); Text("点線").tag("点線"); Text("太線").tag("太線"); Text("光る線").tag("光る線")
-                    }.pickerStyle(.segmented)
-                    Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
-#if targetEnvironment(simulator)
-                    Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
-                    Button("ルートなしランを追加") { seed(.noRoute) }.buttonStyle(.bordered)
-                    Button("長い架空ルートを追加") { seed(.long) }.buttonStyle(.bordered)
-                    Button("欠損のある架空ルートを追加") { seed(.gap) }.buttonStyle(.bordered)
-#endif
-                    Text("検証用：写真とルートはサンプルです。保存・共有は未実装です。") .font(.caption).foregroundStyle(.secondary)
-                }.padding()
-            }.navigationTitle("ルートアート検証")
         }
     }
+
+    @MainActor private func renderImage() -> UIImage? {
+        let renderer = ImageRenderer(content: artwork.frame(width: 360, height: 450))
+        renderer.scale = 3
+        return renderer.uiImage
+    }
+
+    @MainActor private func saveImage() {
+        guard let image = renderImage() else { exportMessage = "画像を作成できませんでした"; return }
+        PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
+            guard status == .authorized || status == .limited else {
+                DispatchQueue.main.async { exportMessage = "写真への追加が許可されていません" }
+                return
+            }
+            PHPhotoLibrary.shared().performChanges({
+                PHAssetChangeRequest.creationRequestForAsset(from: image)
+            }) { success, _ in
+                DispatchQueue.main.async { exportMessage = success ? "写真に保存しました" : "写真に保存できませんでした" }
+            }
+        }
+    }
+
+    @MainActor private func prepareShare() {
+        guard let image = renderImage() else { exportMessage = "画像を作成できませんでした"; return }
+        exportMessage = ""
+        shareImage = ExportImage(image: image)
+    }
+
     func authorize(write: Bool, completion: @escaping (Bool) -> Void) {
         guard HKHealthStore.isHealthDataAvailable() else { DispatchQueue.main.async { status = "HealthKitを利用できません" }; return }
         let workout = HKObjectType.workoutType(), route = HKSeriesType.workoutRoute()
@@ -217,4 +264,20 @@ enum RouteGapProbe {
         }
         return (points, breaks)
     }
+}
+
+struct ExportImage: Identifiable {
+    let id = UUID()
+    let image: UIImage
+}
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let image: UIImage
+    let onComplete: (Bool) -> Void
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        controller.completionWithItemsHandler = { _, completed, _, _ in onComplete(completed) }
+        return controller
+    }
+    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
