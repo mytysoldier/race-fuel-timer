@@ -110,9 +110,14 @@ struct ProbeView: View {
                             } else { Color.gray }
                             LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
-                                RouteShape(points: artworkRoute.points, smoothSample: !hasRequestedRoute && !hideEndpoints, breakIndices: artworkRoute.breaks)
-                                    .stroke(routeColor, style: StrokeStyle(lineWidth: lineStyle == "太線" ? 6 : 3, lineCap: .round, lineJoin: .round, dash: lineStyle == "点線" ? [3, 8] : []))
-                                    .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
+                                ZStack {
+                                    let shape = RouteShape(points: artworkRoute.points, smoothSample: !hasRequestedRoute && !hideEndpoints, breakIndices: artworkRoute.breaks)
+                                    let width: CGFloat = lineStyle == "太線" ? 6 : 3
+                                    let dash: [CGFloat] = lineStyle == "点線" ? [3, 8] : []
+                                    shape.stroke(.black.opacity(0.8), style: StrokeStyle(lineWidth: width + 3, lineCap: .round, lineJoin: .round, dash: dash))
+                                    shape.stroke(routeColor, style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: dash))
+                                        .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
+                                }
                                     .padding(.horizontal, 25).padding(.vertical, 30)
                                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                                 VStack(spacing: 7) {
