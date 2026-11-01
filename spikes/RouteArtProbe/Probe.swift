@@ -23,6 +23,8 @@ struct ProbeView: View {
     @State private var hasRequestedRoute = false
     @State private var needsRefresh = false
     @State private var requestID = UUID()
+    @State private var routeObserver: HKAnchoredObjectQuery?
+    @State private var observerID = UUID()
 #if targetEnvironment(simulator)
     @State private var pendingWorkout: HKWorkout?
 #endif
@@ -88,6 +90,7 @@ struct ProbeView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
                 requestID = UUID()
+                stopRouteObserver()
                 points = []; breakIndices = []; selectedWorkout = nil
                 status = "ルートを再確認します"
                 needsRefresh = true
@@ -175,6 +178,7 @@ struct ProbeView: View {
         status = "ルートを読み込み中"
         authorize(write: false, isCurrent: { currentRequest == requestID }) { ok in
             guard currentRequest == requestID, ok else { return }
+            startRouteObserver()
             let predicate = HKQuery.predicateForWorkouts(with: .running)
             let query = HKSampleQuery(sampleType: HKObjectType.workoutType(), predicate: predicate, limit: 30, sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]) { _, samples, error in
                 DispatchQueue.main.async {
@@ -185,6 +189,34 @@ struct ProbeView: View {
             }
             store.execute(query)
         }
+    }
+    // 追加・削除を検知したら最新のランを探し直す、検証用の単純な方式。
+    func startRouteObserver() {
+        guard routeObserver == nil else { return }
+        let currentObserver = UUID()
+        observerID = currentObserver
+        let query = HKAnchoredObjectQuery(type: HKSeriesType.workoutRoute(), predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) { _, _, _, _, error in
+            DispatchQueue.main.async {
+                guard currentObserver == observerID else { return }
+                if error != nil { status = "ルート変更の監視に失敗しました"; return }
+                // 初回スナップショットと検索の間の変更も取りこぼさないよう再検索する。
+                read()
+            }
+        }
+        query.updateHandler = { _, added, deleted, _, error in
+            DispatchQueue.main.async {
+                guard currentObserver == observerID else { return }
+                if error != nil { status = "ルート変更の監視に失敗しました"; return }
+                if !(added ?? []).isEmpty || !(deleted ?? []).isEmpty { read() }
+            }
+        }
+        routeObserver = query
+        store.execute(query)
+    }
+    func stopRouteObserver() {
+        observerID = UUID()
+        if let routeObserver { store.stop(routeObserver) }
+        routeObserver = nil
     }
     func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID) {
         guard request == requestID else { return }
