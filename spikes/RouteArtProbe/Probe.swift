@@ -27,6 +27,7 @@ struct ProbeView: View {
     @State private var observerID = UUID()
 #if targetEnvironment(simulator)
     @State private var pendingWorkout: HKWorkout?
+    @State private var storageMessage = ""
 #endif
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
@@ -71,6 +72,12 @@ struct ProbeView: View {
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
 #if targetEnvironment(simulator)
+                    Button("検証用にアプリ内へ保存") { saveProbeArtwork() }
+                        .buttonStyle(.bordered).disabled(!hasVisibleLine)
+                    NavigationLink("検証用の保存作品を見る") {
+                        ProbeSavedArtworks()
+                    }
+                    if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
                     Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
                     Button("2本の架空ルート付きランを追加") { seed(.multiple) }.buttonStyle(.bordered)
                     Button("離れた2区間の架空ランを追加") { seed(.separated) }.buttonStyle(.bordered)
@@ -266,6 +273,17 @@ struct ProbeView: View {
         store.execute(query)
     }
 #if targetEnvironment(simulator)
+    @MainActor private func saveProbeArtwork() {
+        guard let data = renderImage()?.pngData() else { storageMessage = "画像を作成できませんでした"; return }
+        do {
+            let directory = try ProbeSavedArtworks.directory()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: directory.appendingPathComponent("\(UUID().uuidString).png"), options: .atomic)
+            storageMessage = "検証用画像を保存しました（\(data.count) バイト）"
+        } catch {
+            storageMessage = "検証用画像を保存できませんでした"
+        }
+    }
     // 架空データを密にして、実際のGPSのような連続した点を検証する。
     func denseSample() -> [CLLocationCoordinate2D] {
         (0..<(sample.count - 1)).flatMap { index -> [CLLocationCoordinate2D] in
@@ -368,6 +386,42 @@ struct ProbeView: View {
     }
 #endif
 }
+
+#if targetEnvironment(simulator)
+struct ProbeSavedArtworks: View {
+    @State private var images: [URL] = []
+    @State private var message = "読み込み中"
+    var body: some View {
+        ScrollView {
+            VStack {
+                Text(message)
+                ForEach(images, id: \.self) { url in
+                    if let image = UIImage(contentsOfFile: url.path) {
+                        Image(uiImage: image).resizable().scaledToFit()
+                    } else {
+                        Text("保存画像を読み込めません: \(url.lastPathComponent)")
+                    }
+                }
+            }.padding()
+        }.navigationTitle("検証用の保存作品").onAppear { load() }
+    }
+    static func directory() throws -> URL {
+        try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("RouteArtProbeImages", isDirectory: true)
+    }
+    private func load() {
+        do {
+            let directory = try Self.directory()
+            guard FileManager.default.fileExists(atPath: directory.path) else { images = []; message = "保存作品はありません"; return }
+            images = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+                .filter { $0.pathExtension.lowercased() == "png" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            message = images.isEmpty ? "保存作品はありません" : "保存作品: \(images.count) 件"
+        } catch {
+            images = []; message = "保存作品を読み込めませんでした"
+        }
+    }
+}
+#endif
 
 struct RouteShape: Shape {
     let points: [CLLocationCoordinate2D]
