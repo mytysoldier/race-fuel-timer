@@ -5,9 +5,11 @@
 000000000000000000000003 = {isa = PBXFileReference; explicitFileType = wrapper.application; path = RouteArtProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
 000000000000000000000004 = {isa = PBXBuildFile; fileRef = 000000000000000000000001; };
 000000000000000000000005 = {isa = PBXBuildFile; fileRef = 000000000000000000000002; };
-000000000000000000000006 = {isa = PBXGroup; children = (000000000000000000000001,000000000000000000000002,000000000000000000000007,); sourceTree = "<group>"; };
+000000000000000000000019 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeArtworkDeletion.swift; sourceTree = "<group>"; };
+000000000000000000000020 = {isa = PBXBuildFile; fileRef = 000000000000000000000019; };
+000000000000000000000006 = {isa = PBXGroup; children = (000000000000000000000001,000000000000000000000019,000000000000000000000002,000000000000000000000007,); sourceTree = "<group>"; };
 000000000000000000000007 = {isa = PBXGroup; children = (000000000000000000000003,); name = Products; sourceTree = "<group>"; };
-000000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000004,); runOnlyForDeploymentPostprocessing = 0; };
+000000000000000000000008 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000004,000000000000000000000020,); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000009 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (000000000000000000000005,); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000010 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 000000000000000000000011 = {isa = PBXNativeTarget; buildConfigurationList = 000000000000000000000016; buildPhases = (000000000000000000000008,000000000000000000000010,000000000000000000000009,); buildRules = (); dependencies = (); name = RouteArtProbe; productName = RouteArtProbe; productReference = 000000000000000000000003; productType = "com.apple.product-type.application"; };

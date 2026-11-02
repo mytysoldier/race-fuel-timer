@@ -421,20 +421,37 @@ struct ProbeView: View {
 struct ProbeSavedArtworks: View {
     @State private var images: [URL] = []
     @State private var message = "読み込み中"
+    @State private var deleteTarget: URL?
+    @State private var showDeleteConfirmation = false
     var body: some View {
         ScrollView {
             VStack {
                 Text(message)
                 Button("検証用の破損画像を追加") { addCorruptFixture() }.buttonStyle(.bordered)
                 ForEach(images, id: \.self) { url in
-                    if let image = UIImage(contentsOfFile: url.path) {
-                        Image(uiImage: image).resizable().scaledToFit()
-                    } else {
-                        Text("保存画像を読み込めません: \(url.lastPathComponent)")
+                    VStack {
+                        if let image = UIImage(contentsOfFile: url.path) {
+                            Image(uiImage: image).resizable().scaledToFit()
+                        } else {
+                            Text("保存画像を読み込めません: \(url.lastPathComponent)")
+                        }
+                        Button("この検証画像を削除", role: .destructive) { deleteTarget = url; showDeleteConfirmation = true }
                     }
                 }
             }.padding()
         }.navigationTitle("検証用の保存作品").onAppear { load() }
+            .confirmationDialog("この検証画像を削除しますか？", isPresented: $showDeleteConfirmation, titleVisibility: .visible, presenting: deleteTarget) { target in
+                Button("削除", role: .destructive) {
+                    do {
+                        try ProbeArtworkDeletion.remove(target, in: Self.directory())
+                        load()
+                    } catch { message = "検証画像を削除できませんでした" }
+                    deleteTarget = nil
+                }
+                Button("キャンセル", role: .cancel) { deleteTarget = nil }
+            } message: { _ in
+                Text("試作内の画像のみ削除します。写真や共有先のコピーは削除されません。")
+            }
     }
     static func directory() throws -> URL {
         try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
