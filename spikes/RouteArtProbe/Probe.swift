@@ -425,6 +425,7 @@ struct ProbeSavedArtworks: View {
         ScrollView {
             VStack {
                 Text(message)
+                Button("検証用の破損画像を追加") { addCorruptFixture() }.buttonStyle(.bordered)
                 ForEach(images, id: \.self) { url in
                     if let image = UIImage(contentsOfFile: url.path) {
                         Image(uiImage: image).resizable().scaledToFit()
@@ -438,6 +439,17 @@ struct ProbeSavedArtworks: View {
     static func directory() throws -> URL {
         try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("RouteArtProbeImages", isDirectory: true)
+    }
+    private func addCorruptFixture() {
+        do {
+            let directory = try Self.directory()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let file = directory.appendingPathComponent("corrupt-\(UUID().uuidString).png")
+            try Data("invalid fixture".utf8).write(to: file, options: .atomic)
+            load()
+        } catch {
+            message = "検証用の破損画像を追加できませんでした"
+        }
     }
     private func load() {
         do {
