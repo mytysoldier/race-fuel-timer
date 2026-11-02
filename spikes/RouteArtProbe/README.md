@@ -1,6 +1,6 @@
 # Route Art Probe（#105）
 
-本番アプリとは独立した検証用アプリ。2枚のAI生成背景、架空の線、背景切替、HealthKitからの読み取りを試す。Simulator専用ボタンは架空のワークアウトとルートをSimulatorのHealthKitに追加するため、書き込み権限を要求する。本番機能の仕様ではない。
+本番アプリとは独立した検証用アプリ。3枚のAI生成背景、架空の線、背景切替、HealthKitからの読み取りを試す。背景の出どころと利用条件の確認状況は `docs/route-art-spike.md` を参照。Simulator専用ボタンは架空のワークアウトとルートをSimulatorのHealthKitに追加するため、書き込み権限を要求する。本番機能の仕様ではない。
 
 ```sh
 xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteArtProbe -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/RouteArtProbe build CODE_SIGNING_ALLOWED=NO
