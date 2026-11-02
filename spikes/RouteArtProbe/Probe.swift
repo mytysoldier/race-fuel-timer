@@ -28,6 +28,8 @@ struct ProbeView: View {
 #if targetEnvironment(simulator)
     @State private var pendingWorkout: HKWorkout?
     @State private var storageMessage = ""
+    @State private var formatMessage = ""
+    @State private var jpegPreview: UIImage?
 #endif
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
@@ -78,6 +80,13 @@ struct ProbeView: View {
                         ProbeSavedArtworks()
                     }
                     if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
+                    Button("検証用にPNGとJPEGを比較") { compareImageFormats() }
+                        .buttonStyle(.bordered).disabled(!hasVisibleLine)
+                    if !formatMessage.isEmpty { Text(formatMessage).font(.caption) }
+                    if let jpegPreview {
+                        Text("JPEG 0.85 の再読み込み画像（検証用）").font(.caption)
+                        Image(uiImage: jpegPreview).resizable().scaledToFit()
+                    }
                     Button("架空ルート付きランを追加") { seed(.normal) }.buttonStyle(.bordered)
                     Button("2本の架空ルート付きランを追加") { seed(.multiple) }.buttonStyle(.bordered)
                     Button("離れた2区間の架空ランを追加") { seed(.separated) }.buttonStyle(.bordered)
@@ -98,6 +107,9 @@ struct ProbeView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
+#if targetEnvironment(simulator)
+                jpegPreview = nil; formatMessage = ""
+#endif
                 requestID = UUID()
                 stopRouteObserver()
                 points = []; breakIndices = []; selectedWorkout = nil
@@ -184,6 +196,9 @@ struct ProbeView: View {
         }
     }
     func read() {
+#if targetEnvironment(simulator)
+        jpegPreview = nil; formatMessage = ""
+#endif
         hasRequestedRoute = true
         let currentRequest = UUID()
         requestID = currentRequest
@@ -273,6 +288,17 @@ struct ProbeView: View {
         store.execute(query)
     }
 #if targetEnvironment(simulator)
+    @MainActor private func compareImageFormats() {
+        jpegPreview = nil
+        guard let image = renderImage(), let png = image.pngData(),
+              let jpeg = image.jpegData(compressionQuality: 0.85),
+              let preview = UIImage(data: jpeg) else {
+            formatMessage = "画像を変換できませんでした"
+            return
+        }
+        jpegPreview = preview
+        formatMessage = "PNG: \(png.count) バイト / JPEG 0.85: \(jpeg.count) バイト"
+    }
     @MainActor private func saveProbeArtwork() {
         guard let data = renderImage()?.pngData() else { storageMessage = "画像を作成できませんでした"; return }
         do {
