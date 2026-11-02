@@ -10,7 +10,8 @@ import UIKit
 
 struct ProbeView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @State private var background = ["sunrise", "forest"].randomElement() ?? "sunrise"
+    private let backgrounds = ["sunrise", "forest", "coast-generated"]
+    @State private var background = ["sunrise", "forest", "coast-generated"].randomElement() ?? "sunrise"
     @State private var points: [CLLocationCoordinate2D] = []
     @State private var breakIndices: Set<Int> = []
     @State private var status = "架空のルートで表示中"
@@ -51,7 +52,10 @@ struct ProbeView: View {
                 VStack(spacing: 16) {
                     artwork.aspectRatio(4.0 / 5.0, contentMode: .fit)
                     Text(status).font(.footnote)
-                    Button("背景を変更") { background = background == "sunrise" ? "forest" : "sunrise" }.buttonStyle(.borderedProminent)
+                    Button("背景を変更") {
+                        let index = backgrounds.firstIndex(of: background) ?? 0
+                        background = backgrounds[(index + 1) % backgrounds.count]
+                    }.buttonStyle(.borderedProminent)
                     Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
                     Picker("線の色", selection: $lineColor) {
                         Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
