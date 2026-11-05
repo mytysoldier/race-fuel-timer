@@ -18,7 +18,7 @@ xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteAr
 
 Simulator専用の「検証用にアプリ内へ保存」は表示中の完成画像をPNGとして試作のApplication Supportに追加する。「検証用の保存作品を見る」でHealthKitを読み直さず一覧表示する。画像はSimulatorに残る。これは容量と再起動後の閲覧を試すための最小実装で、個別削除は検証用の試案。保存数の上限、効率的な一覧、ファイル保護、バックアップ・復元は未実装または未検証。本番用の保存機能として使わない。
 
-保存作品一覧の「検証用の破損画像を追加」は画像として読めない架空ファイルを追加する。正常画像と共存させ、一覧が表示されるか確認するためのもの。追加したファイルは専用Simulatorに残る。個別削除には確認画面があり、試作内の画像だけを対象とする。ユーザーの作品や実機のデータには使用しない。削除処理は `swift test --package-path spikes/RouteArtProbe --scratch-path /tmp/route105-deletion-tests` で一時ファイルを使って確認できる。Simulatorでは確認画面とキャンセルのみ確認し、画面からの実削除は未確認。
+保存作品一覧の「検証用の破損画像を追加」は画像として読めない架空ファイルを追加する。正常画像と共存させ、一覧が表示されるか確認するためのもの。追加したファイルは専用Simulatorに残る。個別削除には確認画面があり、試作内の画像だけを対象とする。ユーザーの作品や実機のデータには使用しない。削除処理は `swift test --package-path spikes/RouteArtProbe --scratch-path /tmp/route105-deletion-tests` で一時ファイルを使って確認できる。専用Simulatorでは確認画面のキャンセルと、破損画像を画面から削除して正常画像が残ることを確認した。
 
 Simulator専用の「検証用にPNGとJPEGを比較」は現在の作品からPNGと品質0.85のJPEGを生成し、各バイト数とJPEG再読み込み画像を表示する。表示は比較ボタンを押した時点の画像で、設定変更後は再度押す。比較画像は保存せず、HealthKitの再読み込み開始時とバックグラウンド移行時に消す。結果は実機や本番形式の採用を保証しない。
 
