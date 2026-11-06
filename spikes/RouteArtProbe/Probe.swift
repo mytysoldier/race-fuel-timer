@@ -10,8 +10,8 @@ import UIKit
 
 struct ProbeView: View {
     @Environment(\.scenePhase) private var scenePhase
-    private let backgrounds = ["sunrise", "forest", "coast-generated"]
-    @State private var background = ["sunrise", "forest", "coast-generated"].randomElement() ?? "sunrise"
+    private let backgrounds = ["sunrise", "forest", "coast-generated", "autumn-generated"]
+    @State private var background = ["sunrise", "forest", "coast-generated", "autumn-generated"].randomElement() ?? "sunrise"
     @State private var points: [CLLocationCoordinate2D] = []
     @State private var breakIndices: Set<Int> = []
     @State private var status = "架空のルートで表示中"
