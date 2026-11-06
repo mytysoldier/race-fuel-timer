@@ -423,11 +423,14 @@ struct ProbeSavedArtworks: View {
     @State private var message = "読み込み中"
     @State private var deleteTarget: URL?
     @State private var showDeleteConfirmation = false
+    @State private var attributesMessage = ""
     var body: some View {
         ScrollView {
             VStack {
                 Text(message)
                 Button("検証用の破損画像を追加") { addCorruptFixture() }.buttonStyle(.bordered)
+                Button("検証用に保存属性を確認") { inspectAttributes() }.buttonStyle(.bordered)
+                if !attributesMessage.isEmpty { Text(attributesMessage) }
                 ForEach(images, id: \.self) { url in
                     VStack {
                         if let image = UIImage(contentsOfFile: url.path) {
@@ -456,6 +459,24 @@ struct ProbeSavedArtworks: View {
     static func directory() throws -> URL {
         try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("RouteArtProbeImages", isDirectory: true)
+    }
+    private func inspectAttributes() {
+        do {
+            let directory = try Self.directory()
+            guard let image = images.first(where: { UIImage(contentsOfFile: $0.path) != nil }) else {
+                attributesMessage = "確認できる正常画像がありません"
+                return
+            }
+            func describe(_ url: URL) throws -> String {
+                let excluded = try url.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup
+                let protection = try FileManager.default.attributesOfItem(atPath: url.path)[.protectionKey]
+                let exclusionText = excluded.map { $0 ? "除外" : "除外なし" } ?? "取得不可"
+                return "バックアップ: \(exclusionText)、保護: \(protection.map { String(describing: $0) } ?? "取得不可")"
+            }
+            attributesMessage = "フォルダ: \(try describe(directory))\n画像: \(try describe(image))"
+        } catch {
+            attributesMessage = "保存属性を確認できませんでした"
+        }
     }
     private func addCorruptFixture() {
         do {
