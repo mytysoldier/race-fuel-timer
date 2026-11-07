@@ -305,6 +305,7 @@ struct ContentView: View {
 
 // シート自身がBindingを監視し、選択欄と派生テキストを同じドラフトから描画する。
 private struct NotificationSettingsEditor: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Binding var draft: NotificationSettingsDraft
     let formattedDuration: (Int) -> String
     let notificationSummary: (EditablePlan) -> String
@@ -318,11 +319,18 @@ private struct NotificationSettingsEditor: View {
     var body: some View {
         Form {
             Section("通知のタイミング") {
-                Picker("通知間隔", selection: $draft.editablePlan.intervalMinutes) {
-                    ForEach(Array(stride(from: 10, through: 240, by: 10)), id: \.self) { Text("\($0)分ごと").tag($0) }
-                }
-                Picker("通知を止める予定", selection: $draft.editablePlan.notificationEndMinutes) {
-                    ForEach(draftNotificationEndOptions, id: \.self) { Text("\(formattedDuration($0))後").tag($0) }
+                if dynamicTypeSize.isAccessibilitySize {
+                    VStack(alignment: .leading) {
+                        Text("通知間隔").accessibilityHidden(true)
+                        intervalPicker.labelsHidden()
+                    }
+                    VStack(alignment: .leading) {
+                        Text("通知を止める予定").accessibilityHidden(true)
+                        endPicker.labelsHidden()
+                    }
+                } else {
+                    intervalPicker
+                    endPicker
                 }
                 Text(notificationSummary(draft.editablePlan)).font(.footnote).foregroundStyle(.secondary)
             }
@@ -363,6 +371,18 @@ private struct NotificationSettingsEditor: View {
                 draft.shouldResetPersistedPlan = true
             }
         } message: { Text("補給リマインドの設定を初期値へ戻します。") }
+    }
+
+    private var intervalPicker: some View {
+        Picker("通知間隔", selection: $draft.editablePlan.intervalMinutes) {
+            ForEach(Array(stride(from: 10, through: 240, by: 10)), id: \.self) { Text("\($0)分ごと").tag($0) }
+        }
+    }
+
+    private var endPicker: some View {
+        Picker("通知を止める予定", selection: $draft.editablePlan.notificationEndMinutes) {
+            ForEach(draftNotificationEndOptions, id: \.self) { Text("\(formattedDuration($0))後").tag($0) }
+        }
     }
 }
 
