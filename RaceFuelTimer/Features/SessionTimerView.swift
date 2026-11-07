@@ -117,11 +117,15 @@ struct SessionTimerView: View {
                     Text(target.trigger.minutes <= session.elapsedMinutes(at: date)
                          ? "到来済みで未記録の予定です。" : "次回の予定を先に記録できます。")
                         .font(.footnote).foregroundStyle(.secondary)
-                    HStack {
-                        Button("摂った") { onRecord(target.identifier, .taken) }
-                            .buttonStyle(.borderedProminent)
-                        Button("スキップ") { onRecord(target.identifier, .skipped) }
-                            .buttonStyle(.bordered)
+                    ViewThatFits(in: .horizontal) {
+                        HStack {
+                            recordingButtons(for: target.identifier)
+                        }
+                        .fixedSize(horizontal: true, vertical: false)
+
+                        VStack(alignment: .leading) {
+                            recordingButtons(for: target.identifier)
+                        }
                     }
                     .controlSize(.large)
                     .disabled(session.state != .running)
@@ -136,6 +140,14 @@ struct SessionTimerView: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+
+    @ViewBuilder
+    private func recordingButtons(for identifier: String) -> some View {
+        Button("摂った") { onRecord(identifier, .taken) }
+            .buttonStyle(.borderedProminent)
+        Button("スキップ") { onRecord(identifier, .skipped) }
+            .buttonStyle(.bordered)
     }
 
     @ViewBuilder
