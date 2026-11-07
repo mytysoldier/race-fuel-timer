@@ -96,3 +96,16 @@ import Testing
     #expect(result.points.map(\.longitude) == [0.003, 0.004, 0.004, 0.005])
     #expect(result.breaks == [2])
 }
+
+@Test func 架空データの性能測定は各方式と区間数の結果を返す() {
+    // Arrange
+    let expectedSegments = [1, 1, 10, 10, 101, 101]
+
+    // Act
+    let results = RouteMaskPerformance.run()
+
+    // Assert
+    #expect(results.map(\.segmentCount) == expectedSegments)
+    #expect(results.map(\.remainingPoints) == [6_014, 6_014, 6_014, 5_690, 6_014, 2_414])
+    #expect(results.allSatisfy { $0.medianSeconds.isFinite && $0.medianSeconds >= 0 })
+}

@@ -26,6 +26,10 @@ struct ProbeView: View {
     @State private var requestID = UUID()
     @State private var routeObserver: HKAnchoredObjectQuery?
     @State private var observerID = UUID()
+#if ROUTE_ART_BENCHMARK
+    @State private var performanceRunning = false
+    @State private var performanceResult = ""
+#endif
 #if targetEnvironment(simulator)
     @State private var pendingWorkout: HKWorkout?
     @State private var hideSegmentEnds = false
@@ -57,6 +61,13 @@ struct ProbeView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+#if ROUTE_ART_BENCHMARK
+                    Button("架空ルートの処理時間を測定") { measurePerformance() }
+                        .buttonStyle(.bordered).disabled(performanceRunning)
+                    Text("検証専用：架空の6,050点を使用し、HealthKitや写真にはアクセスしません。")
+                        .font(.caption)
+                    if !performanceResult.isEmpty { Text(performanceResult).font(.caption) }
+#endif
                     artwork.aspectRatio(4.0 / 5.0, contentMode: .fit)
                     Text(status).font(.footnote)
                     Button("背景を変更") {
@@ -174,6 +185,21 @@ struct ProbeView: View {
         renderer.scale = 3
         return renderer.uiImage
     }
+
+#if ROUTE_ART_BENCHMARK
+    @MainActor private func measurePerformance() {
+        performanceRunning = true
+        performanceResult = "測定中"
+        let measurement = Task.detached(priority: .userInitiated) { RouteMaskPerformance.run() }
+        Task {
+            let results = await measurement.value
+            performanceResult = results.map {
+                "\($0.segmentCount)区間・\($0.mode): \(String(format: "%.3f", $0.medianSeconds))秒 / \($0.remainingPoints)点"
+            }.joined(separator: "\n")
+            performanceRunning = false
+        }
+    }
+#endif
 
     @MainActor private func saveImage() {
         guard let image = renderImage() else { exportMessage = "画像を作成できませんでした"; return }

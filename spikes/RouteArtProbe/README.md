@@ -21,8 +21,14 @@ xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteAr
 Mac上で架空の6,050点について区間数と保護方式の処理時間を比較するには次を実行する。3回の中央値を表示する。実機や実データの性能を保証せず、画面更新や画像保存の時間は含まない。
 
 ```sh
-swiftc -O spikes/RouteArtProbe/RoutePrivacyProbe.swift spikes/RouteArtProbe/Benchmarks/main.swift -o /tmp/route-mask-benchmark-bin
+swiftc -O spikes/RouteArtProbe/RoutePrivacyProbe.swift spikes/RouteArtProbe/RouteMaskPerformance.swift spikes/RouteArtProbe/Benchmarks/main.swift -o /tmp/route-mask-benchmark-bin
 /tmp/route-mask-benchmark-bin
+```
+
+実機向けの測定ボタンは `ROUTE_ART_BENCHMARK` を明示して試作をビルドした場合だけ表示する。Release構成の署名付き検証ビルドをiPhoneに導入し、「架空ルートの処理時間を測定」を押す。Macと同じ架空6,050点をメモリ内で作り、両方式・3種類の区間数を各3回測る。HealthKitや写真を読み書きせず、結果も画面表示のみ。結果は測定環境により変わり、描画や画面応答は含まない。実際のバックアップやルートに関する検証ではない。
+
+```sh
+xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteArtProbe -configuration Release -destination 'platform=iOS,id=<DEVICE_ID>' -derivedDataPath /tmp/route105-perf-device DEVELOPMENT_TEAM=<TEAM_ID> SWIFT_ACTIVE_COMPILATION_CONDITIONS=ROUTE_ART_BENCHMARK -allowProvisioningUpdates build
 ```
 
 Simulator専用の「検証用にアプリ内へ保存」は表示中の完成画像をPNGとして試作のApplication Supportに追加する。「検証用の保存作品を見る」でHealthKitを読み直さず一覧表示する。画像はSimulatorに残る。これは容量と再起動後の閲覧を試すための最小実装で、個別削除は検証用の試案。保存数の上限、効率的な一覧、ファイル保護、バックアップ・復元は未実装または未検証。本番用の保存機能として使わない。
