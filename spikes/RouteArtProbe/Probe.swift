@@ -103,7 +103,9 @@ struct ProbeView: View {
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
                     if selectedWorkout != nil {
-                        Button("次に古いルート付きランを探す") { selectOlderWorkout() }
+                        Button("次に新しいルート付きランを探す") { selectWorkout(step: -1) }
+                            .buttonStyle(.bordered)
+                        Button("次に古いルート付きランを探す") { selectWorkout(step: 1) }
                             .buttonStyle(.bordered)
                         if routeUpdateAvailable {
                             Text("ルートが更新された可能性があります。読み込み直して確認してください。")
@@ -303,20 +305,27 @@ struct ProbeView: View {
         if let routeObserver { store.stop(routeObserver) }
         routeObserver = nil
     }
-    func selectOlderWorkout() {
+    func selectWorkout(step: Int) {
         let currentRequest = UUID()
         requestID = currentRequest
         status = "次のルート付きランを検索中"
-        findRoute(workouts, index: selectedIndex + 1, request: currentRequest, preserveSelection: true)
+        findRoute(workouts, index: selectedIndex + step, request: currentRequest, step: step, preserveSelection: true)
     }
-    func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID, preserveSelection: Bool = false) {
+    func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID, step: Int = 1, preserveSelection: Bool = false) {
         guard request == requestID else { return }
-        guard index < workouts.count else { status = preserveSelection ? "これより古いルート付きランは検索範囲にありません" : "ルート付きランが見つかりません。アクセス設定や記録を確認してください"; return }
+        guard workouts.indices.contains(index) else {
+            if preserveSelection {
+                status = step < 0 ? "これより新しいルート付きランは検索範囲にありません" : "これより古いルート付きランは検索範囲にありません"
+            } else {
+                status = "直近30件にルート付きランが見つかりません。アクセス設定や記録を確認してください"
+            }
+            return
+        }
         let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
             DispatchQueue.main.async {
             guard request == requestID else { return }
             if error != nil { status = "ルートの読み込みに失敗"; return }
-            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + 1, request: request, preserveSelection: preserveSelection); return }
+            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + step, request: request, step: step, preserveSelection: preserveSelection); return }
             let ordered = routes.sorted { a, b in
                 a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
             }
