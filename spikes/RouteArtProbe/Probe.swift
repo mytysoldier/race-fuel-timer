@@ -18,7 +18,7 @@ struct ProbeView: View {
     @State private var selectedWorkout: HKWorkout?
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
-    @State private var hideEndpoints = false
+    @State private var hideEndpoints = true
     @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
     @State private var hasRequestedRoute = false
