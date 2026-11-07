@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct PrivacyInformationView: View {
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         NavigationStack {
             List {
@@ -23,6 +25,11 @@ struct PrivacyInformationView: View {
             }
             .navigationTitle("プライバシーとサポート")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("閉じる") { dismiss() }
+                }
+            }
         }
     }
 }

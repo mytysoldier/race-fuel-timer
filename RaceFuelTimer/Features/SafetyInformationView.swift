@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SafetyInformationView: View {
+    @Environment(\.dismiss) private var dismiss
     let isOnboarding: Bool
     let onCompleteOnboarding: () -> Void
 
@@ -26,6 +27,13 @@ struct SafetyInformationView: View {
             }
             .navigationTitle(isOnboarding ? "はじめに" : "安全上の注意")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if !isOnboarding {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("閉じる") { dismiss() }
+                    }
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 if isOnboarding {
                     Button("内容を確認して始める", action: onCompleteOnboarding)
