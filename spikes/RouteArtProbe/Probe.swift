@@ -28,6 +28,7 @@ struct ProbeView: View {
     @State private var observerID = UUID()
 #if targetEnvironment(simulator)
     @State private var pendingWorkout: HKWorkout?
+    @State private var hideSegmentEnds = false
     @State private var storageMessage = ""
     @State private var formatMessage = ""
     @State private var jpegPreview: UIImage?
@@ -38,7 +39,13 @@ struct ProbeView: View {
     private var artworkRoute: (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
         let input = hasRequestedRoute ? points : sample
         let originalBreaks = hasRequestedRoute ? breakIndices : Set<Int>()
-        return hideEndpoints ? RoutePrivacyProbe.mask(input, breaks: originalBreaks, radius: 200) : (input, originalBreaks)
+        guard hideEndpoints else { return (input, originalBreaks) }
+#if targetEnvironment(simulator)
+        let centers: RoutePrivacyProbe.Centers = hideSegmentEnds ? .eachSegment : .overall
+        return RoutePrivacyProbe.mask(input, breaks: originalBreaks, radius: 200, centers: centers)
+#else
+        return RoutePrivacyProbe.mask(input, breaks: originalBreaks, radius: 200)
+#endif
     }
     private var hasVisibleLine: Bool {
         let route = artworkRoute
@@ -64,6 +71,10 @@ struct ProbeView: View {
                         Text("実線").tag("実線"); Text("点線").tag("点線"); Text("太線").tag("太線"); Text("光る線").tag("光る線")
                     }.pickerStyle(.segmented)
                     Toggle("開始・終了地点の周囲を隠す（検証用・約200m）", isOn: $hideEndpoints)
+#if targetEnvironment(simulator)
+                    Toggle("検証用：各区間の端も隠す", isOn: $hideSegmentEnds)
+                        .disabled(!hideEndpoints)
+#endif
                     if hideEndpoints && !hasVisibleLine {
                         Text("表示できるルートが残りません。設定を変更してください。")
                             .font(.caption).foregroundStyle(.secondary)
