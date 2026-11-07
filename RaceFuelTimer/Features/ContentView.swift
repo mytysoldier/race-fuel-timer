@@ -242,6 +242,7 @@ struct ContentView: View {
             if value == selected {
                 Button(title(value)) { onSelect(value) }
                     .buttonStyle(.borderedProminent)
+                    .accessibilityAddTraits(.isSelected)
             } else {
                 Button(title(value)) { onSelect(value) }
                     .buttonStyle(.bordered)
