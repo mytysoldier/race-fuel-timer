@@ -320,8 +320,6 @@ struct ProbeView: View {
             let ordered = routes.sorted { a, b in
                 a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
             }
-            selectedIndex = index
-            if preserveSelection { points = []; breakIndices = []; selectedWorkout = nil; exportMessage = "" }
             readRoutes(ordered, index: 0, workout: workouts[index], request: request, accumulated: [], breaks: [])
             }
         }
@@ -332,6 +330,8 @@ struct ProbeView: View {
         guard request == requestID else { return }
         guard index < routes.count else {
             points = accumulated; breakIndices = breaks; selectedWorkout = workout
+            selectedIndex = workouts.firstIndex { $0.uuid == workout.uuid } ?? selectedIndex
+            exportMessage = ""
             status = "HealthKitから \(accumulated.count) 点を読み込み、\(breaks.count) 箇所を分断候補として表示"
             return
         }
