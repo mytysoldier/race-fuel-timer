@@ -225,17 +225,26 @@ struct ContentView: View {
     }
 
     private func quickChoiceRow(values: [Int], selected: Int, title: @escaping (Int) -> String, onSelect: @escaping (Int) -> Void) -> some View {
-        HStack(spacing: 8) {
-            ForEach(values, id: \.self) { value in
-                if value == selected {
-                    Button(title(value)) { onSelect(value) }
-                        .buttonStyle(.borderedProminent)
-                        .frame(maxWidth: .infinity)
-                } else {
-                    Button(title(value)) { onSelect(value) }
-                        .buttonStyle(.bordered)
-                        .frame(maxWidth: .infinity)
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) {
+                quickChoiceButtons(values: values, selected: selected, title: title, onSelect: onSelect)
+            }
+            .fixedSize(horizontal: true, vertical: false)
+
+            VStack(alignment: .leading, spacing: 8) {
+                quickChoiceButtons(values: values, selected: selected, title: title, onSelect: onSelect)
+            }
+        }
+    }
+
+    private func quickChoiceButtons(values: [Int], selected: Int, title: @escaping (Int) -> String, onSelect: @escaping (Int) -> Void) -> some View {
+        ForEach(values, id: \.self) { value in
+            if value == selected {
+                Button(title(value)) { onSelect(value) }
+                    .buttonStyle(.borderedProminent)
+            } else {
+                Button(title(value)) { onSelect(value) }
+                    .buttonStyle(.bordered)
             }
         }
     }
