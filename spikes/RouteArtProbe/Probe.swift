@@ -329,17 +329,21 @@ struct ProbeView: View {
             let ordered = routes.sorted { a, b in
                 a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
             }
-            readRoutes(ordered, index: 0, workout: workouts[index], request: request, accumulated: [], breaks: [])
+            readRoutes(ordered, index: 0, workoutIndex: index, searchStep: step, preserveSelection: preserveSelection, request: request, accumulated: [], breaks: [])
             }
         }
         store.execute(query)
     }
     // ルートごとに全バッチを読み、異なるルート間は線で結ばない。
-    func readRoutes(_ routes: [HKWorkoutRoute], index: Int, workout: HKWorkout, request: UUID, accumulated: [CLLocationCoordinate2D], breaks: Set<Int>) {
-        guard request == requestID else { return }
+    func readRoutes(_ routes: [HKWorkoutRoute], index: Int, workoutIndex: Int, searchStep: Int, preserveSelection: Bool, request: UUID, accumulated: [CLLocationCoordinate2D], breaks: Set<Int>) {
+        guard request == requestID, workouts.indices.contains(workoutIndex) else { return }
         guard index < routes.count else {
-            points = accumulated; breakIndices = breaks; selectedWorkout = workout
-            selectedIndex = workouts.firstIndex { $0.uuid == workout.uuid } ?? selectedIndex
+            guard !accumulated.isEmpty else {
+                findRoute(workouts, index: workoutIndex + searchStep, request: request, step: searchStep, preserveSelection: preserveSelection)
+                return
+            }
+            points = accumulated; breakIndices = breaks; selectedWorkout = workouts[workoutIndex]
+            selectedIndex = workoutIndex
             exportMessage = ""
             status = "HealthKitから \(accumulated.count) 点を読み込み、\(breaks.count) 箇所を分断候補として表示"
             return
@@ -349,13 +353,20 @@ struct ProbeView: View {
             DispatchQueue.main.async {
                 guard request == requestID else { return }
                 if error != nil { status = "位置データの読み込みに失敗"; return }
+#if targetEnvironment(simulator)
+                // 架空データで座標が空の候補を検証するため、指定時のみ先頭ランの点を無視する。
+                if !(ProcessInfo.processInfo.arguments.contains("-RouteArtSimulateEmptyFirstRoute") && workoutIndex == 0) {
+                    locations.append(contentsOf: batch ?? [])
+                }
+#else
                 locations.append(contentsOf: batch ?? [])
+#endif
                 guard done else { return }
                 let result = RouteGapProbe.analyze(locations)
                 var nextBreaks = breaks
                 if !accumulated.isEmpty && !result.points.isEmpty { nextBreaks.insert(accumulated.count) }
                 nextBreaks.formUnion(result.breakIndices.map { $0 + accumulated.count })
-                readRoutes(routes, index: index + 1, workout: workout, request: request, accumulated: accumulated + result.points, breaks: nextBreaks)
+                readRoutes(routes, index: index + 1, workoutIndex: workoutIndex, searchStep: searchStep, preserveSelection: preserveSelection, request: request, accumulated: accumulated + result.points, breaks: nextBreaks)
             }
         }
         store.execute(query)
