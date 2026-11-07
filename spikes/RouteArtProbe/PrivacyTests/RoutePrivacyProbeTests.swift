@@ -66,3 +66,33 @@ import Testing
     #expect(result.points.count == 2)
     #expect(result.breaks.contains(1))
 }
+
+@Test func 無効な中間点の前後は結ばれない() {
+    // Arrange
+    let points = [CLLocationCoordinate2D(latitude: 0, longitude: 0),
+                  CLLocationCoordinate2D(latitude: 0, longitude: 0.01),
+                  CLLocationCoordinate2D(latitude: 100, longitude: 0),
+                  CLLocationCoordinate2D(latitude: 0, longitude: -0.01),
+                  CLLocationCoordinate2D(latitude: 0, longitude: 0.03)]
+
+    // Act
+    let result = RoutePrivacyProbe.mask(points, breaks: [], radius: 200)
+
+    // Assert
+    #expect(result.points.count == 2)
+    #expect(result.breaks == [1])
+}
+
+@Test func 保護範囲への再侵入後は線を再接続しない() {
+    // Arrange
+    let points = [0.0, 0.003, 0.004, 0.001, 0.004, 0.005, 0.01].map {
+        CLLocationCoordinate2D(latitude: 0, longitude: $0)
+    }
+
+    // Act
+    let result = RoutePrivacyProbe.mask(points, breaks: [], radius: 200)
+
+    // Assert
+    #expect(result.points.map(\.longitude) == [0.003, 0.004, 0.004, 0.005])
+    #expect(result.breaks == [2])
+}
