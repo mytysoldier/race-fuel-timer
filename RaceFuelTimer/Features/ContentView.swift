@@ -435,6 +435,7 @@ private struct SessionHistoryView: View {
                 }
             }
         }
+        .modifier(AdaptiveLabeledContent())
         .navigationTitle("ランの履歴")
         .onAppear(perform: reload)
     }
@@ -483,6 +484,7 @@ private struct SessionHistoryDetailView: View {
                 Button("この履歴を削除", role: .destructive) { confirmDelete = true }
             }
         }
+        .modifier(AdaptiveLabeledContent())
         .navigationTitle("ランの詳細")
         .confirmationDialog("この履歴を削除しますか？", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("削除", role: .destructive) { if onDelete() { dismiss() } else { deleteFailed = true } }
