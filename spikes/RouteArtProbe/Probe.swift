@@ -577,38 +577,3 @@ struct ShareSheet: UIViewControllerRepresentable {
     }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
-
-// 評価用の保守的な試案。開始・終了点から半径内の点と、円を横切る線分を描かない。
-// 位置特定や、他の訪問による露出を完全に防ぐものではない。
-enum RoutePrivacyProbe {
-    static func mask(_ points: [CLLocationCoordinate2D], breaks: Set<Int>, radius: CLLocationDistance) -> (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
-        guard points.count > 1, radius > 0 else { return ([], []) }
-        let centers = [points[0], points[points.count - 1]]
-        func location(_ point: CLLocationCoordinate2D) -> CLLocation { CLLocation(latitude: point.latitude, longitude: point.longitude) }
-        func inside(_ point: CLLocationCoordinate2D) -> Bool {
-            centers.contains { location(point).distance(from: location($0)) <= radius }
-        }
-        // 三角不等式で円への到達があり得る線分も除く。安全側に広く隠れる場合がある。
-        func mightCross(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
-            let segment = location(a).distance(from: location(b))
-            return centers.contains { center in
-                let c = location(center)
-                return max(0, (c.distance(from: location(a)) + c.distance(from: location(b)) - segment) / 2) <= radius
-            }
-        }
-        var output: [CLLocationCoordinate2D] = []
-        var outputBreaks: Set<Int> = []
-        var previousIndex: Int?
-        for (index, point) in points.enumerated() {
-            guard CLLocationCoordinate2DIsValid(point), !inside(point) else { previousIndex = nil; continue }
-            if !output.isEmpty {
-                if let previousIndex, previousIndex + 1 == index, !breaks.contains(index), !mightCross(points[previousIndex], point) {
-                    // この線分は両端の保護範囲に入らない。
-                } else { outputBreaks.insert(output.count) }
-            }
-            output.append(point)
-            previousIndex = index
-        }
-        return (output, outputBreaks)
-    }
-}
