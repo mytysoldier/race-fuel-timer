@@ -16,29 +16,33 @@ enum RoutePrivacyProbe {
         let centerPoints = centerIndices.map { points[$0] }
         guard centerPoints.allSatisfy({ CLLocationCoordinate2DIsValid($0) }) else { return ([], []) }
         func location(_ point: CLLocationCoordinate2D) -> CLLocation { CLLocation(latitude: point.latitude, longitude: point.longitude) }
-        func inside(_ point: CLLocationCoordinate2D) -> Bool {
-            centerPoints.contains { location(point).distance(from: location($0)) <= radius }
+        let centerLocations = centerPoints.map(location)
+        func inside(_ point: CLLocation) -> Bool {
+            centerLocations.contains { point.distance(from: $0) <= radius }
         }
         // 三角不等式で円への到達があり得る線分も除く。安全側に広く隠れる場合がある。
-        func mightCross(_ a: CLLocationCoordinate2D, _ b: CLLocationCoordinate2D) -> Bool {
-            let segment = location(a).distance(from: location(b))
-            return centerPoints.contains { center in
-                let c = location(center)
-                return max(0, (c.distance(from: location(a)) + c.distance(from: location(b)) - segment) / 2) <= radius
+        func mightCross(_ a: CLLocation, _ b: CLLocation) -> Bool {
+            let segment = a.distance(from: b)
+            return centerLocations.contains { center in
+                max(0, (center.distance(from: a) + center.distance(from: b) - segment) / 2) <= radius
             }
         }
         var output: [CLLocationCoordinate2D] = []
         var outputBreaks: Set<Int> = []
         var previousIndex: Int?
+        var previousLocation: CLLocation?
         for (index, point) in points.enumerated() {
-            guard CLLocationCoordinate2DIsValid(point), !inside(point) else { previousIndex = nil; continue }
+            guard CLLocationCoordinate2DIsValid(point) else { previousIndex = nil; previousLocation = nil; continue }
+            let currentLocation = location(point)
+            guard !inside(currentLocation) else { previousIndex = nil; previousLocation = nil; continue }
             if !output.isEmpty {
-                if let previousIndex, previousIndex + 1 == index, !breaks.contains(index), !mightCross(points[previousIndex], point) {
+                if let previousIndex, let previousLocation, previousIndex + 1 == index, !breaks.contains(index), !mightCross(previousLocation, currentLocation) {
                     // この線分は両端の保護範囲に入らない。
                 } else { outputBreaks.insert(output.count) }
             }
             output.append(point)
             previousIndex = index
+            previousLocation = currentLocation
         }
         return (output, outputBreaks)
     }
