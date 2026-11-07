@@ -242,7 +242,31 @@ struct SessionSummaryView: View {
             }
             .padding()
         }
+        .modifier(AdaptiveLabeledContent())
         .navigationTitle("終了サマリ")
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct AdaptiveLabeledContent: ViewModifier {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            content.labeledContentStyle(StackedLabeledContentStyle())
+        } else {
+            content
+        }
+    }
+}
+
+private struct StackedLabeledContentStyle: LabeledContentStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            configuration.label
+            configuration.content.foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .combine)
     }
 }
