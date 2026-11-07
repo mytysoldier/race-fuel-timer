@@ -18,6 +18,13 @@ xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteAr
 
 位置保護には、先頭・末尾だけでなく各分断区間の端を中心に含める比較候補がある。`swift test --package-path spikes/RouteArtProbe --scratch-path /tmp/route105-segment-mask` で架空座標を検証できる。Simulatorでは「開始・終了地点の周囲を隠す」をオンにすると「検証用：各区間の端も隠す」で比較できる。初期オフで、実機の試作は従来の先頭・末尾方式のまま。候補も匿名化を保証せず、実データと多数区間での性能・見た目は未検証。
 
+Mac上で架空の6,050点について区間数と保護方式の処理時間を比較するには次を実行する。3回の中央値を表示する。実機や実データの性能を保証せず、画面更新や画像保存の時間は含まない。
+
+```sh
+swiftc -O spikes/RouteArtProbe/RoutePrivacyProbe.swift spikes/RouteArtProbe/Benchmarks/main.swift -o /tmp/route-mask-benchmark-bin
+/tmp/route-mask-benchmark-bin
+```
+
 Simulator専用の「検証用にアプリ内へ保存」は表示中の完成画像をPNGとして試作のApplication Supportに追加する。「検証用の保存作品を見る」でHealthKitを読み直さず一覧表示する。画像はSimulatorに残る。これは容量と再起動後の閲覧を試すための最小実装で、個別削除は検証用の試案。保存数の上限、効率的な一覧、ファイル保護、バックアップ・復元は未実装または未検証。本番用の保存機能として使わない。
 
 保存作品一覧の「検証用の破損画像を追加」は画像として読めない架空ファイルを追加する。正常画像と共存させ、一覧が表示されるか確認するためのもの。追加したファイルは専用Simulatorに残る。個別削除には確認画面があり、試作内の画像だけを対象とする。ユーザーの作品や実機のデータには使用しない。削除処理は `swift test --package-path spikes/RouteArtProbe --scratch-path /tmp/route105-deletion-tests` で一時ファイルを使って確認できる。専用Simulatorでは確認画面のキャンセルと、破損画像を画面から削除して正常画像が残ることを確認した。
