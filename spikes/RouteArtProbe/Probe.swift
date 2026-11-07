@@ -16,6 +16,9 @@ struct ProbeView: View {
     @State private var breakIndices: Set<Int> = []
     @State private var status = "架空のルートで表示中"
     @State private var selectedWorkout: HKWorkout?
+    @State private var workouts: [HKWorkout] = []
+    @State private var selectedIndex = 0
+    @State private var routeUpdateAvailable = false
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
     @State private var hideEndpoints = true
@@ -99,6 +102,14 @@ struct ProbeView: View {
                     .disabled(!hasVisibleLine)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
+                    if selectedWorkout != nil {
+                        Button("次に古いルート付きランを探す") { selectOlderWorkout() }
+                            .buttonStyle(.bordered)
+                        if routeUpdateAvailable {
+                            Text("ルートが更新された可能性があります。読み込み直して確認してください。")
+                                .font(.caption)
+                        }
+                    }
 #if targetEnvironment(simulator)
                     Button("検証用にアプリ内へ保存") { saveProbeArtwork() }
                         .buttonStyle(.bordered).disabled(!hasVisibleLine)
@@ -138,7 +149,7 @@ struct ProbeView: View {
 #endif
                 requestID = UUID()
                 stopRouteObserver()
-                points = []; breakIndices = []; selectedWorkout = nil
+                points = []; breakIndices = []; selectedWorkout = nil; workouts = []
                 status = "ルートを再確認します"
                 needsRefresh = true
             } else if phase == .active && needsRefresh {
@@ -243,7 +254,8 @@ struct ProbeView: View {
         hasRequestedRoute = true
         let currentRequest = UUID()
         requestID = currentRequest
-        points = []; breakIndices = []; selectedWorkout = nil
+        points = []; breakIndices = []; selectedWorkout = nil; workouts = []
+        routeUpdateAvailable = false
         exportMessage = ""
         status = "ルートを読み込み中"
         authorize(write: false, isCurrent: { currentRequest == requestID }) { ok in
@@ -254,13 +266,14 @@ struct ProbeView: View {
                 DispatchQueue.main.async {
                     guard currentRequest == requestID else { return }
                     guard let workouts = samples as? [HKWorkout], error == nil else { status = "ランの読み込みに失敗"; return }
+                    self.workouts = workouts
                     findRoute(workouts, index: 0, request: currentRequest)
                 }
             }
             store.execute(query)
         }
     }
-    // 追加・削除を検知したら最新のランを探し直す、検証用の単純な方式。
+    // 編集中の自動切替を避け、更新があったことを知らせる検証用の方式。
     func startRouteObserver() {
         guard routeObserver == nil else { return }
         let currentObserver = UUID()
@@ -269,15 +282,17 @@ struct ProbeView: View {
             DispatchQueue.main.async {
                 guard currentObserver == observerID else { return }
                 if error != nil { status = "ルート変更の監視に失敗しました"; return }
-                // 初回スナップショットと検索の間の変更も取りこぼさないよう再検索する。
-                read()
+                // 初回スナップショットと検索の間の変更も取りこぼさないようにする。
+                if selectedWorkout == nil { read() } else { routeUpdateAvailable = true }
             }
         }
         query.updateHandler = { _, added, deleted, _, error in
             DispatchQueue.main.async {
                 guard currentObserver == observerID else { return }
                 if error != nil { status = "ルート変更の監視に失敗しました"; return }
-                if !(added ?? []).isEmpty || !(deleted ?? []).isEmpty { read() }
+                if !(added ?? []).isEmpty || !(deleted ?? []).isEmpty {
+                    if selectedWorkout == nil { read() } else { routeUpdateAvailable = true }
+                }
             }
         }
         routeObserver = query
@@ -288,14 +303,20 @@ struct ProbeView: View {
         if let routeObserver { store.stop(routeObserver) }
         routeObserver = nil
     }
-    func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID) {
+    func selectOlderWorkout() {
+        let currentRequest = UUID()
+        requestID = currentRequest
+        status = "次のルート付きランを検索中"
+        findRoute(workouts, index: selectedIndex + 1, request: currentRequest, preserveSelection: true)
+    }
+    func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID, preserveSelection: Bool = false) {
         guard request == requestID else { return }
-        guard index < workouts.count else { status = "ルート付きランが見つかりません。アクセス設定や記録を確認してください"; return }
+        guard index < workouts.count else { status = preserveSelection ? "これより古いルート付きランは検索範囲にありません" : "ルート付きランが見つかりません。アクセス設定や記録を確認してください"; return }
         let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
             DispatchQueue.main.async {
             guard request == requestID else { return }
             if error != nil { status = "ルートの読み込みに失敗"; return }
-            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + 1, request: request); return }
+            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + 1, request: request, preserveSelection: preserveSelection); return }
             let ordered = routes.sorted { a, b in
                 a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
             }
@@ -309,6 +330,8 @@ struct ProbeView: View {
         guard request == requestID else { return }
         guard index < routes.count else {
             points = accumulated; breakIndices = breaks; selectedWorkout = workout
+            selectedIndex = workouts.firstIndex { $0.uuid == workout.uuid } ?? selectedIndex
+            exportMessage = ""
             status = "HealthKitから \(accumulated.count) 点を読み込み、\(breaks.count) 箇所を分断候補として表示"
             return
         }
