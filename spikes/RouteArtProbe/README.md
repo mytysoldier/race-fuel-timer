@@ -6,6 +6,8 @@
 xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteArtProbe -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' -derivedDataPath build/RouteArtProbe build CODE_SIGNING_ALLOWED=NO
 ```
 
+上記はコンパイル確認用の署名なしビルド。SimulatorでHealthKitを読み書きする検証には、権限情報を含むビルドが必要。例えば `CODE_SIGNING_ALLOWED=NO` の代わりに `CODE_SIGN_IDENTITY=- CODE_SIGNING_ALLOWED=YES` を指定する。
+
 動作確認は専用Simulatorで行い、架空のランを追加後に「HealthKitのランを読み込む」を選ぶ。ルートなし、長いルート、途中で離れた点を含むルートの生成もSimulatorでのみ行える。追加のたびSimulatorのHealthKitに新しいランが残る。データの追加・読み取りの成否は別途記録する。実データを持つ端末に架空データを書き込まないよう、追加ボタンはSimulatorに限定する。
 
 遅延追加の検証では「ルートなしランを追加」し、読み込み後に「直前のルートなしランにルートを追加」を押して再読み込みする。後から追加する架空ルートは区別用に61点。対象のランはアプリ起動中だけ保持し、再起動後は追加できない。HealthKitの書き込み権限が必要で、失敗した場合は案内を表示して再試行できる。

@@ -86,7 +86,7 @@ struct ProbeView: View {
                     Toggle("検証用：各区間の端も隠す", isOn: $hideSegmentEnds)
                         .disabled(!hideEndpoints)
 #endif
-                    if hideEndpoints && !hasVisibleLine {
+                    if hideEndpoints && (!hasRequestedRoute || !points.isEmpty) && !hasVisibleLine {
                         Text("表示できるルートが残りません。設定を変更してください。")
                             .font(.caption).foregroundStyle(.secondary)
                     }
