@@ -40,6 +40,7 @@ struct ProbeView: View {
 #endif
 #if targetEnvironment(simulator)
     @State private var pendingWorkout: HKWorkout?
+    @State private var isSeparatedSample = false
     @State private var hideSegmentEnds = false
     @State private var storageMessage = ""
     @State private var formatMessage = ""
@@ -47,6 +48,13 @@ struct ProbeView: View {
 #endif
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
+    }
+    private var isSampleFixture: Bool {
+#if targetEnvironment(simulator)
+        isSeparatedSample
+#else
+        false
+#endif
     }
     private var artworkRoute: (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
         let input = hasRequestedRoute ? points : sample
@@ -152,9 +160,24 @@ struct ProbeView: View {
                     }
                 }
         }
+#if targetEnvironment(simulator)
+        .onAppear {
+            guard !hasRequestedRoute, ProcessInfo.processInfo.arguments.contains("-RouteArtSeparatedSample") else { return }
+            let source = denseSample()
+            points = source.enumerated().map { index, point in
+                CLLocationCoordinate2D(latitude: 35 + point.latitude * 0.01,
+                                       longitude: 139 + point.longitude * 0.01 + (index >= 61 ? 0.02 : 0))
+            }
+            breakIndices = [61]
+            hasRequestedRoute = true
+            isSeparatedSample = true
+            status = "検証用：離れた2区間の架空ルート"
+        }
+#endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
 #if targetEnvironment(simulator)
+                if isSeparatedSample { return }
                 jpegPreview = nil; formatMessage = ""
 #endif
                 requestID = UUID()
@@ -196,7 +219,7 @@ struct ProbeView: View {
                                     if let workout = selectedWorkout {
                                         Text(workout.endDate, format: .dateTime.year().month().day()).font(.caption)
                                         Text("時間 \(Int(workout.duration / 60))分").font(.caption)
-                                    } else if !hasRequestedRoute { Text("サンプル").font(.caption) }
+                                    } else if !hasRequestedRoute || isSampleFixture { Text("サンプル").font(.caption) }
                                 }.foregroundStyle(.white).padding(.bottom, 24)
                             }
                         }.frame(width: geometry.size.width, height: geometry.size.height).clipped().clipShape(RoundedRectangle(cornerRadius: 16))
@@ -261,6 +284,7 @@ struct ProbeView: View {
     }
     func read() {
 #if targetEnvironment(simulator)
+        isSeparatedSample = false
         jpegPreview = nil; formatMessage = ""
 #endif
         hasRequestedRoute = true
