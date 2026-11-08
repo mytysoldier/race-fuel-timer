@@ -69,7 +69,7 @@ struct ProbeView: View {
     }
     private var hasVisibleLine: Bool {
         let route = artworkRoute
-        return route.points.count > 1 && (1..<route.points.count).contains { !route.breaks.contains($0) }
+        return RoutePrivacyProbe.hasDrawableLine(route.points, breaks: route.breaks)
     }
     private let store = HKHealthStore()
     private let sample = [(0.1,0.3),(0.2,0.18),(0.42,0.12),(0.52,0.3),(0.7,0.25),(0.88,0.42),(0.75,0.58),(0.82,0.78),(0.58,0.9),(0.4,0.7),(0.21,0.82),(0.1,0.6),(0.1,0.3)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }
@@ -105,8 +105,8 @@ struct ProbeView: View {
                     Toggle("検証用：各区間の端も隠す", isOn: $hideSegmentEnds)
                         .disabled(!hideEndpoints)
 #endif
-                    if hideEndpoints && (!hasRequestedRoute || !points.isEmpty) && !hasVisibleLine {
-                        Text("表示できるルートが残りません。設定を変更してください。")
+                    if (!hasRequestedRoute || !points.isEmpty) && !hasVisibleLine {
+                        Text(hideEndpoints ? "表示できるルートが残りません。設定を変更してください。" : "表示できるルートがありません。別のランをお試しください。")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Text("一部を隠しても、ルートの形などから場所が推測される可能性があります。保存・共有前に画像をご確認ください。")
