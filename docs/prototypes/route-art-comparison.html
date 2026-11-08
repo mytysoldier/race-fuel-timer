@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ランの思い出：表現の比較見本</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #f5f3ef; color: #242421; font-family: -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; }
+  main { max-width: 1140px; margin: auto; padding: 28px 20px 48px; }
+  h1 { font-size: 1.6rem; margin: 0 0 8px; }
+  h2 { font-size: 1.15rem; margin: 0 0 4px; }
+  p { margin: 0 0 14px; }
+  .note { padding: 14px; background: #fff; border-radius: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 24px; margin-top: 28px; }
+  .description { min-height: 3.4em; color: #575751; }
+  .art { position: relative; overflow: hidden; aspect-ratio: 4 / 5; border-radius: 16px; color: white; background: #353e35 url('../../spikes/RouteArtProbe/Images/autumn-generated.jpg') center / cover; }
+  .art::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 20%, rgba(0,0,0,.8)); }
+  .route { position: absolute; inset: 9% 9% 27%; width: 82%; height: 64%; filter: drop-shadow(0 1px 3px #000); }
+  .route, .mini-route { fill: none; stroke: white; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+  .caption { position: absolute; bottom: 7%; left: 8%; right: 8%; text-shadow: 0 1px 4px black; }
+  .eyebrow { font-size: .7rem; letter-spacing: .15em; }
+  .distance { font: 2.3rem Georgia, serif; }
+  .caption p { margin: 0; }
+  .scenery .route { inset: auto 8% 23% auto; width: 34%; height: 25%; }
+  .collection { background: #28312c; padding: 20px; display: flex; flex-direction: column; }
+  .collection::before { background: none; }
+  .collection > * { position: relative; }
+  .collection h3 { margin: 0 0 4px; font-size: 1.2rem; }
+  .collection p { margin: 0 0 14px; font-size: .85rem; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; flex: 1; }
+  .tile { position: relative; overflow: hidden; border-radius: 10px; background: #515d51 url('../../spikes/RouteArtProbe/Images/autumn-generated.jpg') center / cover; }
+  .tile::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent, rgba(0,0,0,.78)); }
+  .mini-route { position: absolute; inset: 14% 14% 32%; width: 72%; height: 54%; filter: drop-shadow(0 1px 3px #000); }
+  .mini-route { stroke-width: 4; }
+  .tile span { position: absolute; left: 10%; bottom: 8%; font-size: .75rem; }
+  .collection .foot { margin: 10px 0 0; font-size: .7rem; color: #e5e8de; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" aria-hidden="true" style="position:absolute"><defs><path id="route" d="M 12 75 L 25 35 L 48 23 L 58 45 L 76 39 L 90 57 L 77 70 L 83 88 L 61 95 L 44 79 L 26 90 L 12 75"/></defs></svg>
+<main>
+  <h1>ランの思い出、どんな形で残す？</h1>
+  <p class="note">比較用の架空の見本です。距離・日付・ルートは実記録ではなく、背景は同梱候補の風景です。実際に見た景色ではありません。画面は操作できず、機能の実装・公開を示すものではありません。</p>
+  <div class="grid">
+    <section>
+      <h2>A. ルートを主役に</h2>
+      <p class="description">走った形を大きく見せる、一回のランの作品。</p>
+      <div class="art" role="img" aria-label="架空の5.2キロのラン。秋の風景を背景に、白いルートを大きく表示した見本。">
+        <svg class="route" viewBox="0 0 100 110" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><use href="#route"/></svg>
+        <div class="caption"><p class="eyebrow">YOUR RUN · サンプル</p><div class="distance">5.2 km</div><p>2026年11月8日</p></div>
+      </div>
+    </section>
+    <section>
+      <h2>B. 風景を主役に</h2>
+      <p class="description">背景を広く見せて、同じルートを小さく添える作品。</p>
+      <div class="art scenery" role="img" aria-label="同じ架空のラン。秋の風景を広く見せ、ルートを小さく添えた見本。">
+        <svg class="route" viewBox="0 0 100 110" preserveAspectRatio="xMidYMid meet" aria-hidden="true"><use href="#route"/></svg>
+        <div class="caption"><p class="eyebrow">YOUR RUN · サンプル</p><div class="distance">5.2 km</div><p>2026年11月8日</p></div>
+      </div>
+    </section>
+    <section>
+      <h2>C. 作品を並べて見返す</h2>
+      <p class="description">一回の作品と、ほかのランも並べた一覧のイメージ。</p>
+      <div class="art collection" role="img" aria-label="架空の11月の作品一覧。比較用の同じルートと、別の架空の作品を並べた見本。">
+        <h3>11月のラン</h3><p>自分のペースで、少しずつ。</p>
+        <div class="tiles">
+          <div class="tile"><svg class="mini-route" viewBox="0 0 100 110" aria-hidden="true"><use href="#route"/></svg><span>11月8日 · 5.2 km</span></div>
+          <div class="tile"><svg class="mini-route" viewBox="0 0 100 110" aria-hidden="true"><path d="M15 75 L22 35 L55 23 L82 43 L72 80 L44 91 L15 75"/></svg><span>11月4日 · 4.0 km</span></div>
+          <div class="tile"><svg class="mini-route" viewBox="0 0 100 110" aria-hidden="true"><path d="M17 84 L35 40 L71 25 L85 64 L66 91 L17 84"/></svg><span>11月1日 · 3.5 km</span></div>
+        </div>
+        <p class="foot">すべて架空の作品 · 一覧は未実装</p>
+      </div>
+    </section>
+  </div>
+  <p style="margin-top:24px">実際の保存・再訪や位置保護の検証は別途必要です。ルートの形から場所が推測される可能性があります。</p>
+</main>
+</body>
+</html>
