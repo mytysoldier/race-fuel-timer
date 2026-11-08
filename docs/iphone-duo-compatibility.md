@@ -196,3 +196,11 @@ iPhone 14 / iOS 27.0.1、TestFlight版 1.1.1（7）で、ユーザーの了承�
 約10分で確認する予定だったが、Macの通知センターを開こうとしたコンピュータ操作が長時間タイムアウトし、セッションは49分21秒継続した。復帰時は次の予定が50分と表示され、終了サマリーは到来4回、摂った0回、スキップ0回、到来済み・未記録4回だった。実走ではない。ユーザーの了承を得て、このテスト履歴1件を削除し、一覧の空状態を確認した。
 
 通知バナーや通知センター内の対象通知は確認できていないため、配信の成否は不明。予定時刻付近を連続観察したわけではなく、画面共有中のMac通知設定の影響も未確定。今後は通知の観測手段を事前に確立し、操作のタイムアウト時も予定の時間で安全にセッションを終了できる方法を用意する。画像証跡は保存していない。
+
+### 既存OSでの自動回帰テスト（2026-11-08）
+
+`main` の `5c07453`、Xcode 26.2 / iOS 26.2 SDKで、専用Simulatorをそれぞれ事前起動し、並列実行を無効にして全テストを実行した。iPhone 17 / iOS 26.2とiPhone SE（第3世代）/ iOS 17.4の両方で、Swift Testingの46件すべてが成功した。
+
+実行コマンドは `xcodebuild test -project RaceFuelTimer.xcodeproj -scheme RaceFuelTimer -destination 'platform=iOS Simulator,id=<専用SimulatorのID>' -parallel-testing-enabled NO -derivedDataPath build/DerivedData CODE_SIGNING_ALLOWED=NO`。先行するiOS 26.2での通常実行は結果が返らず中断したが、事前起動と並列実行の無効化を同時に変更したため、停滞の原因は特定できていない。
+
+自動テストの成功は画面操作、通知の実配信、実機、iOS 27 SDK、Duoの開閉・リサイズの確認を意味しない。これらは引き続き未確認。
