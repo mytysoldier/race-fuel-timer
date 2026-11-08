@@ -18,6 +18,7 @@ struct ProbeView: View {
     @State private var selectedWorkout: HKWorkout?
     @State private var workouts: [HKWorkout] = []
     @State private var selectedIndex = 0
+    @State private var isSelectingWorkout = false
     @State private var routeUpdateAvailable = false
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
@@ -115,14 +116,14 @@ struct ProbeView: View {
                         Button("写真に保存") { saveImage() }.buttonStyle(.borderedProminent)
                         Button("共有") { prepareShare() }.buttonStyle(.bordered)
                     }
-                    .disabled(!hasVisibleLine)
+                    .disabled(!hasVisibleLine || isSelectingWorkout)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
                     if selectedWorkout != nil {
                         Button("次に新しいルート付きランを探す") { selectWorkout(step: -1) }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.bordered).disabled(isSelectingWorkout)
                         Button("次に古いルート付きランを探す") { selectWorkout(step: 1) }
-                            .buttonStyle(.bordered)
+                            .buttonStyle(.bordered).disabled(isSelectingWorkout)
                         if routeUpdateAvailable {
                             Text("ルートが更新された可能性があります。読み込み直して確認してください。")
                                 .font(.caption)
@@ -130,13 +131,13 @@ struct ProbeView: View {
                     }
 #if targetEnvironment(simulator)
                     Button("検証用にアプリ内へ保存") { saveProbeArtwork() }
-                        .buttonStyle(.bordered).disabled(!hasVisibleLine)
+                        .buttonStyle(.bordered).disabled(!hasVisibleLine || isSelectingWorkout)
                     NavigationLink("検証用の保存作品を見る") {
                         ProbeSavedArtworks()
                     }
                     if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
                     Button("検証用にPNGとJPEGを比較") { compareImageFormats() }
-                        .buttonStyle(.bordered).disabled(!hasVisibleLine)
+                        .buttonStyle(.bordered).disabled(!hasVisibleLine || isSelectingWorkout)
                     if !formatMessage.isEmpty { Text(formatMessage).font(.caption) }
                     if let jpegPreview {
                         Text("JPEG 0.85 の再読み込み画像（検証用）").font(.caption)
@@ -181,6 +182,7 @@ struct ProbeView: View {
                 jpegPreview = nil; formatMessage = ""
 #endif
                 requestID = UUID()
+                isSelectingWorkout = false
                 stopRouteObserver()
                 points = []; breakIndices = []; selectedWorkout = nil; workouts = []
                 status = "ルートを再確認します"
@@ -283,6 +285,7 @@ struct ProbeView: View {
         }
     }
     func read() {
+        isSelectingWorkout = false
 #if targetEnvironment(simulator)
         isSeparatedSample = false
         jpegPreview = nil; formatMessage = ""
@@ -342,12 +345,15 @@ struct ProbeView: View {
     func selectWorkout(step: Int) {
         let currentRequest = UUID()
         requestID = currentRequest
+        isSelectingWorkout = true
+        exportMessage = ""
         status = "次のルート付きランを検索中"
         findRoute(workouts, index: selectedIndex + step, request: currentRequest, step: step, preserveSelection: true)
     }
     func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID, step: Int = 1, preserveSelection: Bool = false) {
         guard request == requestID else { return }
         guard workouts.indices.contains(index) else {
+            isSelectingWorkout = false
             if preserveSelection {
                 status = step < 0 ? "これより新しいルート付きランは検索範囲にありません" : "これより古いルート付きランは検索範囲にありません"
             } else {
@@ -358,7 +364,7 @@ struct ProbeView: View {
         let query = HKSampleQuery(sampleType: HKSeriesType.workoutRoute(), predicate: HKQuery.predicateForObjects(from: workouts[index]), limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, error in
             DispatchQueue.main.async {
             guard request == requestID else { return }
-            if error != nil { status = "ルートの読み込みに失敗"; return }
+            if error != nil { isSelectingWorkout = false; status = "ルートの読み込みに失敗"; return }
             guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + step, request: request, step: step, preserveSelection: preserveSelection); return }
             let ordered = routes.sorted { a, b in
                 a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
@@ -377,6 +383,7 @@ struct ProbeView: View {
                 return
             }
             points = accumulated; breakIndices = breaks; selectedWorkout = workouts[workoutIndex]
+            isSelectingWorkout = false
             selectedIndex = workoutIndex
             exportMessage = ""
             status = "HealthKitから \(accumulated.count) 点を読み込み、\(breaks.count) 箇所を分断候補として表示"
@@ -386,7 +393,7 @@ struct ProbeView: View {
         let query = HKWorkoutRouteQuery(route: routes[index]) { _, batch, done, error in
             DispatchQueue.main.async {
                 guard request == requestID else { return }
-                if error != nil { status = "位置データの読み込みに失敗"; return }
+                if error != nil { isSelectingWorkout = false; status = "位置データの読み込みに失敗"; return }
 #if targetEnvironment(simulator)
                 // 架空データで座標が空の候補を検証するため、指定時のみ先頭ランの点を無視する。
                 if !(ProcessInfo.processInfo.arguments.contains("-RouteArtSimulateEmptyFirstRoute") && workoutIndex == 0) {
