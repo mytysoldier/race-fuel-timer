@@ -21,6 +21,11 @@ struct ProbeView: View {
     @State private var routeUpdateAvailable = false
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
+#if targetEnvironment(simulator)
+    @State private var sceneryFocused = ProcessInfo.processInfo.arguments.contains("-RouteArtSceneryComparison")
+#else
+    @State private var sceneryFocused = false
+#endif
     @State private var hideEndpoints = true
     @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
@@ -78,6 +83,9 @@ struct ProbeView: View {
                         background = backgrounds[(index + 1) % backgrounds.count]
                     }.buttonStyle(.borderedProminent)
                     Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
+#if targetEnvironment(simulator)
+                    Toggle("検証用：風景を大きく見せる", isOn: $sceneryFocused)
+#endif
                     Picker("線の色", selection: $lineColor) {
                         Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
                     }.pickerStyle(.segmented)
@@ -176,8 +184,10 @@ struct ProbeView: View {
                                     shape.stroke(routeColor, style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: dash))
                                         .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
                                 }
+                                    .frame(width: sceneryFocused ? geometry.size.width * 0.38 : nil,
+                                           height: sceneryFocused ? geometry.size.height * 0.25 : nil)
                                     .padding(.horizontal, 25).padding(.vertical, 30)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: sceneryFocused ? .bottomTrailing : .center)
                                 VStack(spacing: 7) {
                                     Text("YOUR RUN").font(.system(size: 11, weight: .semibold)).tracking(3)
                                     if let workout = selectedWorkout, let distance = workout.totalDistance?.doubleValue(for: .meter()), distance > 0 {
