@@ -2,6 +2,32 @@ import CoreLocation
 import Testing
 @testable import RoutePrivacyProbe
 
+@Test func 同一座標だけのルートは描画可能な線がない() {
+    // Arrange
+    let point = CLLocationCoordinate2D(latitude: 35, longitude: 139)
+    let points = [point, point, point]
+
+    // Act
+    let result = RoutePrivacyProbe.hasDrawableLine(points, breaks: [])
+
+    // Assert
+    #expect(!result)
+}
+
+@Test func 分断された異なる座標は線として扱わない() {
+    // Arrange
+    let points = [CLLocationCoordinate2D(latitude: 35, longitude: 139),
+                  CLLocationCoordinate2D(latitude: 35, longitude: 139.01)]
+
+    // Act
+    let separated = RoutePrivacyProbe.hasDrawableLine(points, breaks: [1])
+    let connected = RoutePrivacyProbe.hasDrawableLine(points, breaks: [])
+
+    // Assert
+    #expect(!separated)
+    #expect(connected)
+}
+
 @Test func 複数区間の端を隠すと中間の区間端も除外される() {
     // Arrange
     let points = (0...10).map { CLLocationCoordinate2D(latitude: 0, longitude: Double($0) * 0.001) }

@@ -5,6 +5,16 @@ import CoreLocation
 enum RoutePrivacyProbe {
     enum Centers { case overall, eachSegment }
 
+    static func hasDrawableLine(_ points: [CLLocationCoordinate2D], breaks: Set<Int>) -> Bool {
+        guard points.count > 1 else { return false }
+        return (1..<points.count).contains { index in
+            let previous = points[index - 1], current = points[index]
+            return !breaks.contains(index)
+                && CLLocationCoordinate2DIsValid(previous) && CLLocationCoordinate2DIsValid(current)
+                && (previous.latitude != current.latitude || previous.longitude != current.longitude)
+        }
+    }
+
     static func mask(_ points: [CLLocationCoordinate2D], breaks: Set<Int>, radius: CLLocationDistance, centers: Centers = .overall) -> (points: [CLLocationCoordinate2D], breaks: Set<Int>) {
         guard points.count > 1, radius > 0 else { return ([], []) }
         let starts = breaks.filter { $0 > 0 && $0 < points.count }.sorted()
