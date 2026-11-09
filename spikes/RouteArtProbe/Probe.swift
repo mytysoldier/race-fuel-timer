@@ -174,12 +174,18 @@ struct ProbeView: View {
             isSeparatedSample = true
             status = "検証用：離れた2区間の架空ルート"
         }
+        .onChange(of: background) { _, _ in clearFormatComparison() }
+        .onChange(of: lineColor) { _, _ in clearFormatComparison() }
+        .onChange(of: lineStyle) { _, _ in clearFormatComparison() }
+        .onChange(of: hideEndpoints) { _, _ in clearFormatComparison() }
+        .onChange(of: hideSegmentEnds) { _, _ in clearFormatComparison() }
+        .onChange(of: sceneryFocused) { _, _ in clearFormatComparison() }
 #endif
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
 #if targetEnvironment(simulator)
                 if isSeparatedSample { return }
-                jpegPreview = nil; formatMessage = ""
+                clearFormatComparison(); storageMessage = ""
 #endif
                 requestID = UUID()
                 isSelectingWorkout = false
@@ -288,7 +294,7 @@ struct ProbeView: View {
         isSelectingWorkout = false
 #if targetEnvironment(simulator)
         isSeparatedSample = false
-        jpegPreview = nil; formatMessage = ""
+        clearFormatComparison(); storageMessage = ""
 #endif
         hasRequestedRoute = true
         let currentRequest = UUID()
@@ -383,6 +389,10 @@ struct ProbeView: View {
                 return
             }
             points = accumulated; breakIndices = breaks; selectedWorkout = workouts[workoutIndex]
+#if targetEnvironment(simulator)
+            clearFormatComparison()
+            storageMessage = ""
+#endif
             isSelectingWorkout = false
             selectedIndex = workoutIndex
             exportMessage = ""
@@ -413,6 +423,10 @@ struct ProbeView: View {
         store.execute(query)
     }
 #if targetEnvironment(simulator)
+    private func clearFormatComparison() {
+        jpegPreview = nil
+        formatMessage = ""
+    }
     @MainActor private func compareImageFormats() {
         jpegPreview = nil
         guard let image = renderImage(), let png = image.pngData(),
