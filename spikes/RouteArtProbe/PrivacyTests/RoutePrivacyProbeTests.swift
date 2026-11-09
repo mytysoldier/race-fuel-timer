@@ -135,3 +135,58 @@ import Testing
     #expect(results.map(\.remainingPoints) == [6_014, 6_014, 6_014, 5_690, 6_014, 2_414])
     #expect(results.allSatisfy { $0.medianSeconds.isFinite && $0.medianSeconds >= 0 })
 }
+
+@Test func 架空の複数区間で保護後の線は元の隣接点だけを結ぶ() {
+    // Arrange
+    var seed: UInt64 = 0x105
+    func nextOffset() -> Double {
+        seed = seed &* 6_364_136_223_846_793_005 &+ 1
+        return Double((seed >> 32) % 10_001) / 1_000_000 - 0.005
+    }
+    var connectedLines = 0
+    var separatedLines = 0
+
+    // Act
+    for _ in 0..<40 {
+        let points = (0..<40).map { index in
+            CLLocationCoordinate2D(latitude: nextOffset() + Double(index) * 0.0000001,
+                                   longitude: nextOffset())
+        }
+        let originalBreaks: Set<Int> = [10, 20, 30]
+        let centerIndices = [0, 9, 10, 19, 20, 29, 30, 39]
+        for centers in [RoutePrivacyProbe.Centers.overall, .eachSegment] {
+            let result = RoutePrivacyProbe.mask(points, breaks: originalBreaks, radius: 200, centers: centers)
+            let protectedIndices = centers == .overall ? [0, 39] : centerIndices
+            let protected = protectedIndices.map { CLLocation(latitude: points[$0].latitude, longitude: points[$0].longitude) }
+            let sourceIndices = result.points.map { point in
+                points.firstIndex { $0.latitude == point.latitude && $0.longitude == point.longitude }
+            }
+            // Assert
+            #expect(sourceIndices.allSatisfy { $0 != nil })
+            for point in result.points {
+                let location = CLLocation(latitude: point.latitude, longitude: point.longitude)
+                #expect(protected.allSatisfy { location.distance(from: $0) > 200 })
+            }
+            separatedLines += result.breaks.count
+            guard result.points.count > 1 else { continue }
+            for index in 1..<result.points.count where !result.breaks.contains(index) {
+                connectedLines += 1
+                guard let previous = sourceIndices[index - 1], let current = sourceIndices[index] else {
+                    Issue.record("出力点が元のルートにありません")
+                    continue
+                }
+                #expect(current == previous + 1)
+                #expect(!originalBreaks.contains(current))
+                let a = result.points[index - 1], b = result.points[index]
+                for step in 0...20 {
+                    let fraction = Double(step) / 20
+                    let sample = CLLocation(latitude: a.latitude + (b.latitude - a.latitude) * fraction,
+                                            longitude: a.longitude + (b.longitude - a.longitude) * fraction)
+                    #expect(protected.allSatisfy { sample.distance(from: $0) > 200 })
+                }
+            }
+        }
+    }
+    #expect(connectedLines > 0)
+    #expect(separatedLines > 0)
+}
