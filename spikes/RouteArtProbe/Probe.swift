@@ -30,6 +30,7 @@ struct ProbeView: View {
     @State private var hideEndpoints = true
     @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
+    @State private var exportRequestID = UUID()
     @State private var hasRequestedRoute = false
     @State private var needsRefresh = false
     @State private var requestID = UUID()
@@ -71,6 +72,16 @@ struct ProbeView: View {
     private var hasVisibleLine: Bool {
         let route = artworkRoute
         return RoutePrivacyProbe.hasDrawableLine(route.points, breaks: route.breaks)
+    }
+    private var exportSettings: ExportSettings {
+#if targetEnvironment(simulator)
+        let segmentEnds = hideSegmentEnds
+#else
+        let segmentEnds = false
+#endif
+        return ExportSettings(background: background, color: lineColor, style: lineStyle,
+                              hideEndpoints: hideEndpoints, hideSegmentEnds: segmentEnds,
+                              sceneryFocused: sceneryFocused)
     }
     private let store = HKHealthStore()
     private let sample = [(0.1,0.3),(0.2,0.18),(0.42,0.12),(0.52,0.3),(0.7,0.25),(0.88,0.42),(0.75,0.58),(0.82,0.78),(0.58,0.9),(0.4,0.7),(0.21,0.82),(0.1,0.6),(0.1,0.3)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }
@@ -155,7 +166,10 @@ struct ProbeView: View {
             }.navigationTitle("ルートアート検証")
                 .sheet(item: $shareImage) { item in
                     ShareSheet(image: item.image) { completed in
-                        exportMessage = completed ? "共有先での処理が完了しました" : "共有は完了していません"
+                        DispatchQueue.main.async {
+                            guard exportRequestID == item.id else { return }
+                            exportMessage = completed ? "共有先での処理が完了しました" : "共有は完了していません"
+                        }
                     }
                 }
         }
@@ -179,6 +193,7 @@ struct ProbeView: View {
         .onChange(of: hideSegmentEnds) { _, _ in clearFormatComparison() }
         .onChange(of: sceneryFocused) { _, _ in clearFormatComparison() }
 #endif
+        .onChange(of: exportSettings) { _, _ in clearExportFeedback() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
 #if targetEnvironment(simulator)
@@ -186,6 +201,7 @@ struct ProbeView: View {
                 clearFormatComparison(); storageMessage = ""
 #endif
                 requestID = UUID()
+                clearExportFeedback()
                 isSelectingWorkout = false
                 stopRouteObserver()
                 points = []; breakIndices = []; selectedWorkout = nil; workouts = []
@@ -254,24 +270,39 @@ struct ProbeView: View {
 #endif
 
     @MainActor private func saveImage() {
+        clearExportFeedback()
+        let currentExport = exportRequestID
         guard let image = renderImage() else { exportMessage = "画像を作成できませんでした"; return }
         PHPhotoLibrary.requestAuthorization(for: .addOnly) { status in
             guard status == .authorized || status == .limited else {
-                DispatchQueue.main.async { exportMessage = "写真への追加が許可されていません" }
+                DispatchQueue.main.async {
+                    guard exportRequestID == currentExport else { return }
+                    exportMessage = "写真への追加が許可されていません"
+                }
                 return
             }
             PHPhotoLibrary.shared().performChanges({
                 PHAssetChangeRequest.creationRequestForAsset(from: image)
             }) { success, _ in
-                DispatchQueue.main.async { exportMessage = success ? "写真に保存しました" : "写真に保存できませんでした" }
+                DispatchQueue.main.async {
+                    guard exportRequestID == currentExport else { return }
+                    exportMessage = success ? "写真に保存しました" : "写真に保存できませんでした"
+                }
             }
         }
     }
 
     @MainActor private func prepareShare() {
+        clearExportFeedback()
         guard let image = renderImage() else { exportMessage = "画像を作成できませんでした"; return }
+        let item = ExportImage(image: image)
+        exportRequestID = item.id
+        shareImage = item
+    }
+
+    private func clearExportFeedback() {
+        exportRequestID = UUID()
         exportMessage = ""
-        shareImage = ExportImage(image: image)
     }
 
     func authorize(write: Bool, isCurrent: @escaping () -> Bool = { true }, completion: @escaping (Bool) -> Void) {
@@ -303,7 +334,7 @@ struct ProbeView: View {
         requestID = currentRequest
         points = []; breakIndices = []; selectedWorkout = nil; workouts = []
         routeUpdateAvailable = false
-        exportMessage = ""
+        clearExportFeedback()
         status = "ルートを読み込み中"
         authorize(write: false, isCurrent: { currentRequest == requestID }) { ok in
             guard currentRequest == requestID, ok else { return }
@@ -354,7 +385,7 @@ struct ProbeView: View {
         let currentRequest = UUID()
         requestID = currentRequest
         isSelectingWorkout = true
-        exportMessage = ""
+        clearExportFeedback()
         status = "次のルート付きランを検索中"
         findRoute(workouts, index: selectedIndex + step, request: currentRequest, step: step, preserveSelection: true)
     }
@@ -397,7 +428,7 @@ struct ProbeView: View {
 #endif
             isSelectingWorkout = false
             selectedIndex = workoutIndex
-            exportMessage = ""
+            clearExportFeedback()
             status = "HealthKitから \(accumulated.count) 点を読み込み、\(breaks.count) 箇所を分断候補として表示"
             return
         }
@@ -670,6 +701,15 @@ struct RouteShape: Shape {
         }
         return path
     }
+}
+
+private struct ExportSettings: Equatable {
+    let background: String
+    let color: String
+    let style: String
+    let hideEndpoints: Bool
+    let hideSegmentEnds: Bool
+    let sceneryFocused: Bool
 }
 
 struct ExportImage: Identifiable {
