@@ -45,6 +45,6 @@ Simulator専用の「検証用にPNGとJPEGを比較」は現在の作品からP
 
 座標が空のルートの探索は、専用Simulatorで試作を起動引数 `-RouteArtSimulateEmptyFirstRoute` 付きで起動すると模擬できる。最新の検索対象ランのルートから受け取る位置を試作内で無視するだけで、HealthKitのデータは変更しない。この引数はSimulatorでのみ有効。実際に空のルートがHealthKitから返る条件を再現するものではない。
 
-Simulatorでは「検証用：風景を大きく見せる」で、従来のルート中心と風景中心の配置を比較できる。起動引数 `-RouteArtSceneryComparison` でも風景中心から開始できる。設定は検証用で、実機は従来表示のまま。実データや複雑な軌跡での見やすさは未確認。
+試作の「検証用：風景を大きく見せる」で、実機でも従来のルート中心と風景中心の配置を比較できる。初期表示はルート中心。Simulatorでは起動引数 `-RouteArtSceneryComparison` でも風景中心から開始できる。実機では架空サンプルの切替を確認した。設定は検証用で、本番の配置は未確定。実データや複雑な軌跡での見やすさは未確認。
 
 Simulatorの起動引数 `-RouteArtSeparatedSample` は、離れた2区間の架空ルートをメモリ内に表示する。HealthKitへの書き込みや読み取りは行わず、画像には「サンプル」と表示する。`-RouteArtSceneryComparison` と組み合わせて配置を比較できる。実際のGPSの分断を再現するものではない。

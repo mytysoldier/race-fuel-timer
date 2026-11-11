@@ -92,9 +92,7 @@ struct ProbeView: View {
                         background = backgrounds[(index + 1) % backgrounds.count]
                     }.buttonStyle(.borderedProminent)
                     Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
-#if targetEnvironment(simulator)
                     Toggle("検証用：風景を大きく見せる", isOn: $sceneryFocused)
-#endif
                     Picker("線の色", selection: $lineColor) {
                         Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
                     }.pickerStyle(.segmented)
