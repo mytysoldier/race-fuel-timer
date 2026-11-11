@@ -285,7 +285,11 @@ struct ProbeView: View {
         store.requestAuthorization(toShare: write ? [workout, route] : [], read: [workout, route]) { ok, error in
             DispatchQueue.main.async {
                 guard isCurrent() else { return }
-                if let error { status = "権限要求エラー: \(error.localizedDescription)" }
+                if let error {
+                    status = "権限要求エラー: \(error.localizedDescription)"
+                } else if !ok {
+                    status = "ヘルスケアへのアクセスを確認できませんでした。もう一度お試しください"
+                }
                 completion(ok && error == nil)
             }
         }
