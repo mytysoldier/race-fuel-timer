@@ -73,6 +73,16 @@ struct ProbeView: View {
         let route = artworkRoute
         return RoutePrivacyProbe.hasDrawableLine(route.points, breaks: route.breaks)
     }
+    private var exportSettings: ExportSettings {
+#if targetEnvironment(simulator)
+        let segmentEnds = hideSegmentEnds
+#else
+        let segmentEnds = false
+#endif
+        return ExportSettings(background: background, color: lineColor, style: lineStyle,
+                              hideEndpoints: hideEndpoints, hideSegmentEnds: segmentEnds,
+                              sceneryFocused: sceneryFocused)
+    }
     private let store = HKHealthStore()
     private let sample = [(0.1,0.3),(0.2,0.18),(0.42,0.12),(0.52,0.3),(0.7,0.25),(0.88,0.42),(0.75,0.58),(0.82,0.78),(0.58,0.9),(0.4,0.7),(0.21,0.82),(0.1,0.6),(0.1,0.3)].map { CLLocationCoordinate2D(latitude: $0.0, longitude: $0.1) }
     var body: some View {
@@ -183,14 +193,7 @@ struct ProbeView: View {
         .onChange(of: hideSegmentEnds) { _, _ in clearFormatComparison() }
         .onChange(of: sceneryFocused) { _, _ in clearFormatComparison() }
 #endif
-        .onChange(of: background) { _, _ in clearExportFeedback() }
-        .onChange(of: lineColor) { _, _ in clearExportFeedback() }
-        .onChange(of: lineStyle) { _, _ in clearExportFeedback() }
-        .onChange(of: hideEndpoints) { _, _ in clearExportFeedback() }
-        .onChange(of: sceneryFocused) { _, _ in clearExportFeedback() }
-#if targetEnvironment(simulator)
-        .onChange(of: hideSegmentEnds) { _, _ in clearExportFeedback() }
-#endif
+        .onChange(of: exportSettings) { _, _ in clearExportFeedback() }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
 #if targetEnvironment(simulator)
@@ -698,6 +701,15 @@ struct RouteShape: Shape {
         }
         return path
     }
+}
+
+private struct ExportSettings: Equatable {
+    let background: String
+    let color: String
+    let style: String
+    let hideEndpoints: Bool
+    let hideSegmentEnds: Bool
+    let sceneryFocused: Bool
 }
 
 struct ExportImage: Identifiable {
