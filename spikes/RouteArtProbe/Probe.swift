@@ -678,13 +678,14 @@ struct RouteShape: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let valid = points.filter { CLLocationCoordinate2DIsValid($0) }
-        guard valid.count > 1, let minLat = valid.map(\.latitude).min(), let maxLat = valid.map(\.latitude).max(), let minLon = valid.map(\.longitude).min(), let maxLon = valid.map(\.longitude).max() else { return path }
+        let longitudes = RoutePrivacyProbe.drawingLongitudes(valid)
+        guard valid.count > 1, let minLat = valid.map(\.latitude).min(), let maxLat = valid.map(\.latitude).max(), let minLon = longitudes.min(), let maxLon = longitudes.max() else { return path }
         let lonScale = cos((minLat + maxLat) / 2 * .pi / 180)
         let width = max((maxLon - minLon) * lonScale, 0.000001), height = max(maxLat - minLat, 0.000001)
         let scale = min(rect.width / width, rect.height / height)
         let xOffset = (rect.width - width * scale) / 2, yOffset = (rect.height - height * scale) / 2
-        let projected = valid.map { point in
-            CGPoint(x: xOffset + (point.longitude - minLon) * lonScale * scale, y: yOffset + (maxLat - point.latitude) * scale)
+        let projected = zip(valid, longitudes).map { point, longitude in
+            CGPoint(x: xOffset + (longitude - minLon) * lonScale * scale, y: yOffset + (maxLat - point.latitude) * scale)
         }
         path.move(to: projected[0])
         if smoothSample {

@@ -5,6 +5,27 @@ import CoreLocation
 enum RoutePrivacyProbe {
     enum Centers { case overall, eachSegment }
 
+    // 日付変更線を含む点群も、最も狭い経度範囲に収める。描画用で元の座標は変更しない。
+    static func drawingLongitudes(_ points: [CLLocationCoordinate2D]) -> [Double] {
+        guard !points.isEmpty else { return [] }
+        let normalized = points.map { point in
+            let value = point.longitude.truncatingRemainder(dividingBy: 360)
+            return value < 0 ? value + 360 : value
+        }
+        let ordered = normalized.sorted()
+        var largestGap = -Double.infinity
+        var start = ordered[0]
+        for index in ordered.indices {
+            let next = index + 1 < ordered.count ? ordered[index + 1] : ordered[0] + 360
+            let gap = next - ordered[index]
+            if gap > largestGap {
+                largestGap = gap
+                start = index + 1 < ordered.count ? ordered[index + 1] : ordered[0]
+            }
+        }
+        return normalized.map { $0 < start ? $0 + 360 : $0 }
+    }
+
     static func hasDrawableLine(_ points: [CLLocationCoordinate2D], breaks: Set<Int>) -> Bool {
         guard points.count > 1 else { return false }
         return (1..<points.count).contains { index in
