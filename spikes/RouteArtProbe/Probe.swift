@@ -128,6 +128,28 @@ struct ProbeView: View {
                     .disabled(!hasVisibleLine || isSelectingWorkout)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     Button("HealthKitのランを読み込む") { read() }.buttonStyle(.bordered)
+                    if !workouts.isEmpty {
+                        DisclosureGroup("直近のランから選ぶ（最大30件）") {
+                            Text("ルートがないランも表示されます。選択後にルートを確認します。")
+                                .font(.caption).foregroundStyle(.secondary)
+                            ForEach(Array(workouts.enumerated()), id: \.element.uuid) { index, workout in
+                                Button {
+                                    selectWorkout(at: index)
+                                } label: {
+                                    HStack {
+                                        Text(workout.endDate, format: .dateTime.year().month().day().hour().minute())
+                                        Spacer()
+                                        Text("\(Int(workout.duration / 60))分")
+                                        if workout.uuid == selectedWorkout?.uuid {
+                                            Image(systemName: "checkmark")
+                                                .accessibilityLabel("選択中")
+                                        }
+                                    }
+                                }
+                                .disabled(isSelectingWorkout)
+                            }
+                        }
+                    }
                     if selectedWorkout != nil {
                         Button("次に新しいルート付きランを探す") { selectWorkout(step: -1) }
                             .buttonStyle(.bordered).disabled(isSelectingWorkout)
@@ -389,6 +411,23 @@ struct ProbeView: View {
         status = "次のルート付きランを検索中"
         findRoute(workouts, index: selectedIndex + step, request: currentRequest, step: step, preserveSelection: true)
     }
+    func selectWorkout(at index: Int) {
+        guard workouts.indices.contains(index), !isSelectingWorkout else { return }
+        let currentRequest = UUID()
+        requestID = currentRequest
+        isSelectingWorkout = true
+        clearExportFeedback()
+        status = "選んだランのルートを検索中"
+        findRoute(workouts, index: index, request: currentRequest, step: 0, preserveSelection: true)
+    }
+    func skipOrReportMissingRoute(_ workouts: [HKWorkout], index: Int, request: UUID, step: Int, preserveSelection: Bool) {
+        if step == 0 {
+            isSelectingWorkout = false
+            status = "選んだランに利用できるルートが見つかりません。アクセス設定や記録を確認してください"
+        } else {
+            findRoute(workouts, index: index + step, request: request, step: step, preserveSelection: preserveSelection)
+        }
+    }
     func findRoute(_ workouts: [HKWorkout], index: Int, request: UUID, step: Int = 1, preserveSelection: Bool = false) {
         guard request == requestID else { return }
         guard workouts.indices.contains(index) else {
@@ -404,7 +443,7 @@ struct ProbeView: View {
             DispatchQueue.main.async {
             guard request == requestID else { return }
             if error != nil { isSelectingWorkout = false; status = "ルートの読み込みに失敗"; return }
-            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { findRoute(workouts, index: index + step, request: request, step: step, preserveSelection: preserveSelection); return }
+            guard let routes = samples as? [HKWorkoutRoute], !routes.isEmpty else { skipOrReportMissingRoute(workouts, index: index, request: request, step: step, preserveSelection: preserveSelection); return }
             let ordered = routes.sorted { a, b in
                 a.startDate == b.startDate ? a.uuid.uuidString < b.uuid.uuidString : a.startDate < b.startDate
             }
@@ -418,7 +457,7 @@ struct ProbeView: View {
         guard request == requestID, workouts.indices.contains(workoutIndex) else { return }
         guard index < routes.count else {
             guard !accumulated.isEmpty else {
-                findRoute(workouts, index: workoutIndex + searchStep, request: request, step: searchStep, preserveSelection: preserveSelection)
+                skipOrReportMissingRoute(workouts, index: workoutIndex, request: request, step: searchStep, preserveSelection: preserveSelection)
                 return
             }
             points = accumulated; breakIndices = breaks; selectedWorkout = workouts[workoutIndex]
