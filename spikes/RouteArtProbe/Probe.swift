@@ -145,6 +145,8 @@ struct ProbeView: View {
                                                 .accessibilityLabel("選択中")
                                         }
                                     }
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
                                 }
                                 .disabled(isSelectingWorkout)
                             }
