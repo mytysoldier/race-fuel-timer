@@ -137,17 +137,7 @@ struct ProbeView: View {
                                 Button {
                                     selectWorkout(at: index)
                                 } label: {
-                                    HStack {
-                                        Text(workout.endDate, format: .dateTime.year().month().day().hour().minute())
-                                        Spacer()
-                                        Text("\(Int(workout.duration / 60))分")
-                                        if workout.uuid == selectedWorkout?.uuid {
-                                            Image(systemName: "checkmark")
-                                                .accessibilityLabel("選択中")
-                                        }
-                                    }
-                                    .frame(minHeight: 44)
-                                    .contentShape(Rectangle())
+                                    workoutRow(workout)
                                 }
                                 .disabled(isSelectingWorkout)
                                 if selectionFeedbackWorkoutID == workout.uuid {
@@ -239,6 +229,33 @@ struct ProbeView: View {
             } else if phase == .active && needsRefresh {
                 needsRefresh = false
                 read()
+            }
+        }
+    }
+    private func workoutRow(_ workout: HKWorkout) -> some View {
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                workoutDate(workout).fixedSize(horizontal: true, vertical: false)
+                Spacer(minLength: 8)
+                workoutDurationAndSelection(workout).fixedSize(horizontal: true, vertical: false)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                workoutDate(workout)
+                workoutDurationAndSelection(workout)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .contentShape(Rectangle())
+    }
+    private func workoutDate(_ workout: HKWorkout) -> some View {
+        Text(workout.endDate, format: .dateTime.year().month().day().hour().minute())
+    }
+    private func workoutDurationAndSelection(_ workout: HKWorkout) -> some View {
+        HStack {
+            Text("\(Int(workout.duration / 60))分")
+            if workout.uuid == selectedWorkout?.uuid {
+                Image(systemName: "checkmark").accessibilityLabel("選択中")
             }
         }
     }
