@@ -19,6 +19,7 @@ struct ProbeView: View {
     @State private var workouts: [HKWorkout] = []
     @State private var selectedIndex = 0
     @State private var isSelectingWorkout = false
+    @State private var selectionFeedbackWorkoutID: UUID?
     @State private var routeUpdateAvailable = false
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
@@ -149,6 +150,9 @@ struct ProbeView: View {
                                     .contentShape(Rectangle())
                                 }
                                 .disabled(isSelectingWorkout)
+                                if selectionFeedbackWorkoutID == workout.uuid {
+                                    Text(status).font(.caption).foregroundStyle(.secondary)
+                                }
                             }
                         }
                     }
@@ -227,6 +231,7 @@ struct ProbeView: View {
                 requestID = UUID()
                 clearExportFeedback()
                 isSelectingWorkout = false
+                selectionFeedbackWorkoutID = nil
                 stopRouteObserver()
                 points = []; breakIndices = []; selectedWorkout = nil; workouts = []
                 status = "ルートを再確認します"
@@ -349,6 +354,7 @@ struct ProbeView: View {
     }
     func read() {
         isSelectingWorkout = false
+        selectionFeedbackWorkoutID = nil
 #if targetEnvironment(simulator)
         isSeparatedSample = false
         clearFormatComparison(); storageMessage = ""
@@ -406,6 +412,7 @@ struct ProbeView: View {
         routeObserver = nil
     }
     func selectWorkout(step: Int) {
+        selectionFeedbackWorkoutID = nil
         let currentRequest = UUID()
         requestID = currentRequest
         isSelectingWorkout = true
@@ -415,6 +422,7 @@ struct ProbeView: View {
     }
     func selectWorkout(at index: Int) {
         guard workouts.indices.contains(index), !isSelectingWorkout else { return }
+        selectionFeedbackWorkoutID = workouts[index].uuid
         let currentRequest = UUID()
         requestID = currentRequest
         isSelectingWorkout = true
