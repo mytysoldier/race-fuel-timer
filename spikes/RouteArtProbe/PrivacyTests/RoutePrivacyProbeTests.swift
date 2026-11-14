@@ -28,6 +28,24 @@ import Testing
     #expect(connected)
 }
 
+@Test func 日付変更線上の同じ地点は線として扱わない() {
+    // Arrange
+    let east = CLLocationCoordinate2D(latitude: 35, longitude: 180)
+    let west = CLLocationCoordinate2D(latitude: 35, longitude: -180)
+    let nearby = CLLocationCoordinate2D(latitude: 35, longitude: -179.999)
+    let north = CLLocationCoordinate2D(latitude: 35.001, longitude: -180)
+
+    // Act
+    let same = RoutePrivacyProbe.hasDrawableLine([east, west], breaks: [])
+    let crossed = RoutePrivacyProbe.hasDrawableLine([east, nearby], breaks: [])
+    let differentLatitude = RoutePrivacyProbe.hasDrawableLine([east, north], breaks: [])
+
+    // Assert
+    #expect(!same)
+    #expect(crossed)
+    #expect(differentLatitude)
+}
+
 @Test func 複数区間の端を隠すと中間の区間端も除外される() {
     // Arrange
     let points = (0...10).map { CLLocationCoordinate2D(latitude: 0, longitude: Double($0) * 0.001) }

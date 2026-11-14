@@ -30,9 +30,11 @@ enum RoutePrivacyProbe {
         guard points.count > 1 else { return false }
         return (1..<points.count).contains { index in
             let previous = points[index - 1], current = points[index]
+            // 東経180度と西経180度は描画上同じ経度。
             return !breaks.contains(index)
                 && CLLocationCoordinate2DIsValid(previous) && CLLocationCoordinate2DIsValid(current)
-                && (previous.latitude != current.latitude || previous.longitude != current.longitude)
+                && (previous.latitude != current.latitude ||
+                    (previous.longitude != current.longitude && abs(previous.longitude - current.longitude) != 360))
         }
     }
 
