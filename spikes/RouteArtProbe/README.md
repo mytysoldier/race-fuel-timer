@@ -48,3 +48,5 @@ Simulator専用の「検証用にPNGとJPEGを比較」は現在の作品からP
 試作の「検証用：風景を大きく見せる」で、実機でも従来のルート中心と風景中心の配置を比較できる。初期表示はルート中心。Simulatorでは起動引数 `-RouteArtSceneryComparison` でも風景中心から開始できる。実機では架空サンプルの切替を確認した。設定は検証用で、本番の配置は未確定。実データや複雑な軌跡での見やすさは未確認。
 
 Simulatorの起動引数 `-RouteArtSeparatedSample` は、離れた2区間の架空ルートをメモリ内に表示する。HealthKitへの書き込みや読み取りは行わず、画像には「サンプル」と表示する。`-RouteArtSceneryComparison` と組み合わせて配置を比較できる。実際のGPSの分断を再現するものではない。
+
+画像ファイルのImageIO上のGPS辞書を調べるには、`swift spikes/RouteArtProbe/Benchmarks/inspect-image-metadata.swift <画像ファイル>` を実行する。プロパティの値や座標は表示せず、辞書があれば終了コード1、読み込み失敗は2を返す。GPS辞書がないことは、他形式の位置情報や画像の内容からの位置推測がないことを保証しない。
