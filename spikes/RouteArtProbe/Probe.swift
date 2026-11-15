@@ -151,10 +151,10 @@ struct ProbeView: View {
                             .buttonStyle(.bordered).disabled(isSelectingWorkout)
                         Button("次に古いルート付きランを探す") { selectWorkout(step: 1) }
                             .buttonStyle(.bordered).disabled(isSelectingWorkout)
-                        if routeUpdateAvailable {
-                            Text("ルートが更新された可能性があります。読み込み直して確認してください。")
-                                .font(.caption)
-                        }
+                    }
+                    if routeUpdateAvailable {
+                        Text("ルートが更新された可能性があります。読み込み直して確認してください。")
+                            .font(.caption)
                     }
 #if targetEnvironment(simulator)
                     Button("検証用にアプリ内へ保存") { saveProbeArtwork() }
@@ -408,7 +408,7 @@ struct ProbeView: View {
                 guard currentObserver == observerID else { return }
                 if error != nil { status = "ルート変更の監視に失敗しました"; return }
                 // 初回スナップショットと検索の間の変更も取りこぼさないようにする。
-                if selectedWorkout == nil { read() } else { routeUpdateAvailable = true }
+                handleRouteUpdate()
             }
         }
         query.updateHandler = { _, added, deleted, _, error in
@@ -416,12 +416,19 @@ struct ProbeView: View {
                 guard currentObserver == observerID else { return }
                 if error != nil { status = "ルート変更の監視に失敗しました"; return }
                 if !(added ?? []).isEmpty || !(deleted ?? []).isEmpty {
-                    if selectedWorkout == nil { read() } else { routeUpdateAvailable = true }
+                    handleRouteUpdate()
                 }
             }
         }
         routeObserver = query
         store.execute(query)
+    }
+    private func handleRouteUpdate() {
+        if selectedWorkout == nil && !isSelectingWorkout {
+            read()
+        } else {
+            routeUpdateAvailable = true
+        }
     }
     func stopRouteObserver() {
         observerID = UUID()
