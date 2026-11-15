@@ -21,6 +21,7 @@ struct ProbeView: View {
     @State private var isSelectingWorkout = false
     @State private var selectionFeedbackWorkoutID: UUID?
     @State private var routeUpdateAvailable = false
+    @State private var routeObserverFailed = false
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
 #if targetEnvironment(simulator)
@@ -154,6 +155,10 @@ struct ProbeView: View {
                     }
                     if routeUpdateAvailable {
                         Text("ルートが更新された可能性があります。読み込み直して確認してください。")
+                            .font(.caption)
+                    }
+                    if routeObserverFailed {
+                        Text("ルートの更新を確認できません。読み込み直して再試行してください。")
                             .font(.caption)
                     }
 #if targetEnvironment(simulator)
@@ -406,7 +411,8 @@ struct ProbeView: View {
         let query = HKAnchoredObjectQuery(type: HKSeriesType.workoutRoute(), predicate: nil, anchor: nil, limit: HKObjectQueryNoLimit) { _, _, _, _, error in
             DispatchQueue.main.async {
                 guard currentObserver == observerID else { return }
-                if error != nil { status = "ルート変更の監視に失敗しました"; return }
+                if error != nil { routeObserverFailed = true; stopRouteObserver(); return }
+                routeObserverFailed = false
                 // 初回スナップショットと検索の間の変更も取りこぼさないようにする。
                 handleRouteUpdate()
             }
@@ -414,7 +420,7 @@ struct ProbeView: View {
         query.updateHandler = { _, added, deleted, _, error in
             DispatchQueue.main.async {
                 guard currentObserver == observerID else { return }
-                if error != nil { status = "ルート変更の監視に失敗しました"; return }
+                if error != nil { routeObserverFailed = true; stopRouteObserver(); return }
                 if !(added ?? []).isEmpty || !(deleted ?? []).isEmpty {
                     handleRouteUpdate()
                 }
