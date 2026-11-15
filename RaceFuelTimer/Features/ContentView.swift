@@ -147,6 +147,9 @@ struct ContentView: View {
                     }
                 }
 
+                NavigationLink("ルートアート") { RouteArtView() }
+                    .buttonStyle(.bordered)
+
                 NavigationLink("ランの履歴") { SessionHistoryView() }
                     .buttonStyle(.bordered)
 

@@ -2,6 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>NSHealthShareUsageDescription</key>
+    <string>ヘルスケアのランと経路からルートアートを作成します。</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>作成したルートアートを写真に保存します。</string>
     <key>NSSupportsLiveActivities</key>
     <true/>
     <key>CFBundleDisplayName</key>
