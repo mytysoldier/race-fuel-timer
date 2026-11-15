@@ -33,7 +33,7 @@ swiftc -O spikes/RouteArtProbe/RoutePrivacyProbe.swift spikes/RouteArtProbe/Rout
 xcodebuild -project spikes/RouteArtProbe/RouteArtProbe.xcodeproj -scheme RouteArtProbe -configuration Release -destination 'platform=iOS,id=<DEVICE_ID>' -derivedDataPath /tmp/route105-perf-device DEVELOPMENT_TEAM=<TEAM_ID> SWIFT_ACTIVE_COMPILATION_CONDITIONS=ROUTE_ART_BENCHMARK -allowProvisioningUpdates build
 ```
 
-Simulator専用の「検証用にアプリ内へ保存」は表示中の完成画像をPNGとして試作のApplication Supportに追加する。「検証用の保存作品を見る」でHealthKitを読み直さず一覧表示する。画像はSimulatorに残る。これは容量と再起動後の閲覧を試すための最小実装で、個別削除は検証用の試案。保存数の上限、効率的な一覧、ファイル保護、バックアップ・復元は未実装または未検証。本番用の保存機能として使わない。
+「検証用にアプリ内へ保存」は表示中の完成画像をPNGとして試作のApplication Supportに追加する。「検証用の保存作品を見る」でHealthKitを読み直さず一覧表示する。画像は使用した端末の試作アプリ内に残る。実機での保存・一覧・削除は未検証。これは容量と再起動後の閲覧を試すための最小実装で、個別削除は検証用の試案。保存数の上限、効率的な一覧、ファイル保護、バックアップ・復元は未実装または未検証。本番用の保存機能として使わない。
 
 保存作品一覧の「検証用の破損画像を追加」は画像として読めない架空ファイルを追加する。正常画像と共存させ、一覧が表示されるか確認するためのもの。追加したファイルは専用Simulatorに残る。個別削除には確認画面があり、試作内の画像だけを対象とする。ユーザーの作品や実機のデータには使用しない。削除処理は `swift test --package-path spikes/RouteArtProbe --scratch-path /tmp/route105-deletion-tests` で一時ファイルを使って確認できる。専用Simulatorでは確認画面のキャンセルと、破損画像を画面から削除して正常画像が残ることを確認した。
 
@@ -45,8 +45,8 @@ Simulator専用の「検証用にPNGとJPEGを比較」は現在の作品からP
 
 座標が空のルートの探索は、専用Simulatorで試作を起動引数 `-RouteArtSimulateEmptyFirstRoute` 付きで起動すると模擬できる。最新の検索対象ランのルートから受け取る位置を試作内で無視するだけで、HealthKitのデータは変更しない。この引数はSimulatorでのみ有効。実際に空のルートがHealthKitから返る条件を再現するものではない。
 
-試作の「検証用：風景を大きく見せる」で、実機でも従来のルート中心と風景中心の配置を比較できる。初期表示はルート中心。Simulatorでは起動引数 `-RouteArtSceneryComparison` でも風景中心から開始できる。実機では架空サンプルの切替を確認した。設定は検証用で、本番の配置は未確定。実データや複雑な軌跡での見やすさは未確認。
+試作の「検証用：風景を大きく見せる」で、実機でも従来のルート中心と風景中心の配置を比較できる。初期表示は風景中心。スイッチをオフにするとルート中心の表示と比較できる。実機では架空サンプルの切替を確認した。設定は検証用で、本番の配置は未確定。実データや複雑な軌跡での見やすさは未確認。
 
-Simulatorの起動引数 `-RouteArtSeparatedSample` は、離れた2区間の架空ルートをメモリ内に表示する。HealthKitへの書き込みや読み取りは行わず、画像には「サンプル」と表示する。`-RouteArtSceneryComparison` と組み合わせて配置を比較できる。実際のGPSの分断を再現するものではない。
+Simulatorの起動引数 `-RouteArtSeparatedSample` は、離れた2区間の架空ルートをメモリ内に表示する。HealthKitへの書き込みや読み取りは行わず、画像には「サンプル」と表示する。表示スイッチで配置を比較できる。実際のGPSの分断を再現するものではない。
 
 画像ファイルのImageIO上のGPS辞書を調べるには、`swift spikes/RouteArtProbe/Benchmarks/inspect-image-metadata.swift <画像ファイル>` を実行する。プロパティの値や座標は表示せず、辞書があれば終了コード1、読み込み失敗は2を返す。GPS辞書がないことは、他形式の位置情報や画像の内容からの位置推測がないことを保証しない。

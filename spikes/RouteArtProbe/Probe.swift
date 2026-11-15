@@ -22,13 +22,10 @@ struct ProbeView: View {
     @State private var selectionFeedbackWorkoutID: UUID?
     @State private var routeUpdateAvailable = false
     @State private var routeObserverFailed = false
+    @State private var storageMessage = ""
     @State private var lineColor = "白"
     @State private var lineStyle = "実線"
-#if targetEnvironment(simulator)
-    @State private var sceneryFocused = ProcessInfo.processInfo.arguments.contains("-RouteArtSceneryComparison")
-#else
-    @State private var sceneryFocused = false
-#endif
+    @State private var sceneryFocused = true
     @State private var hideEndpoints = true
     @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
@@ -46,7 +43,6 @@ struct ProbeView: View {
     @State private var pendingWorkout: HKWorkout?
     @State private var isSeparatedSample = false
     @State private var hideSegmentEnds = false
-    @State private var storageMessage = ""
     @State private var formatMessage = ""
     @State private var jpegPreview: UIImage?
 #endif
@@ -161,13 +157,13 @@ struct ProbeView: View {
                         Text("ルートの更新を確認できません。読み込み直して再試行してください。")
                             .font(.caption)
                     }
-#if targetEnvironment(simulator)
                     Button("検証用にアプリ内へ保存") { saveProbeArtwork() }
                         .buttonStyle(.bordered).disabled(!hasVisibleLine || isSelectingWorkout)
                     NavigationLink("検証用の保存作品を見る") {
                         ProbeSavedArtworks()
                     }
                     if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
+#if targetEnvironment(simulator)
                     Button("検証用にPNGとJPEGを比較") { compareImageFormats() }
                         .buttonStyle(.bordered).disabled(!hasVisibleLine || isSelectingWorkout)
                     if !formatMessage.isEmpty { Text(formatMessage).font(.caption) }
@@ -216,13 +212,17 @@ struct ProbeView: View {
         .onChange(of: hideSegmentEnds) { _, _ in clearFormatComparison() }
         .onChange(of: sceneryFocused) { _, _ in clearFormatComparison() }
 #endif
-        .onChange(of: exportSettings) { _, _ in clearExportFeedback() }
+        .onChange(of: exportSettings) { _, _ in
+            clearExportFeedback()
+            storageMessage = ""
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
 #if targetEnvironment(simulator)
                 if isSeparatedSample { return }
-                clearFormatComparison(); storageMessage = ""
+                clearFormatComparison()
 #endif
+                storageMessage = ""
                 requestID = UUID()
                 clearExportFeedback()
                 isSelectingWorkout = false
@@ -379,8 +379,9 @@ struct ProbeView: View {
         selectionFeedbackWorkoutID = nil
 #if targetEnvironment(simulator)
         isSeparatedSample = false
-        clearFormatComparison(); storageMessage = ""
+        clearFormatComparison()
 #endif
+        storageMessage = ""
         hasRequestedRoute = true
         let currentRequest = UUID()
         requestID = currentRequest
@@ -503,8 +504,8 @@ struct ProbeView: View {
             points = accumulated; breakIndices = breaks; selectedWorkout = workouts[workoutIndex]
 #if targetEnvironment(simulator)
             clearFormatComparison()
-            storageMessage = ""
 #endif
+            storageMessage = ""
             isSelectingWorkout = false
             selectedIndex = workoutIndex
             clearExportFeedback()
@@ -550,6 +551,7 @@ struct ProbeView: View {
         jpegPreview = preview
         formatMessage = "PNG: \(png.count) バイト / JPEG 0.85: \(jpeg.count) バイト"
     }
+#endif
     @MainActor private func saveProbeArtwork() {
         guard let data = renderImage()?.pngData() else { storageMessage = "画像を作成できませんでした"; return }
         do {
@@ -561,6 +563,7 @@ struct ProbeView: View {
             storageMessage = "検証用画像を保存できませんでした"
         }
     }
+#if targetEnvironment(simulator)
     // 架空データを密にして、実際のGPSのような連続した点を検証する。
     func denseSample() -> [CLLocationCoordinate2D] {
         (0..<(sample.count - 1)).flatMap { index -> [CLLocationCoordinate2D] in
@@ -664,7 +667,6 @@ struct ProbeView: View {
 #endif
 }
 
-#if targetEnvironment(simulator)
 struct ProbeSavedArtworks: View {
     @State private var images: [URL] = []
     @State private var message = "読み込み中"
@@ -675,9 +677,11 @@ struct ProbeSavedArtworks: View {
         ScrollView {
             VStack {
                 Text(message)
+#if targetEnvironment(simulator)
                 Button("検証用の破損画像を追加") { addCorruptFixture() }.buttonStyle(.bordered)
                 Button("検証用に保存属性を確認") { inspectAttributes() }.buttonStyle(.bordered)
                 if !attributesMessage.isEmpty { Text(attributesMessage) }
+#endif
                 ForEach(images, id: \.self) { url in
                     VStack {
                         if let image = UIImage(contentsOfFile: url.path) {
@@ -707,6 +711,7 @@ struct ProbeSavedArtworks: View {
         try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
             .appendingPathComponent("RouteArtProbeImages", isDirectory: true)
     }
+#if targetEnvironment(simulator)
     private func inspectAttributes() {
         do {
             let directory = try Self.directory()
@@ -736,6 +741,7 @@ struct ProbeSavedArtworks: View {
             message = "検証用の破損画像を追加できませんでした"
         }
     }
+#endif
     private func load() {
         do {
             let directory = try Self.directory()
@@ -748,7 +754,6 @@ struct ProbeSavedArtworks: View {
         }
     }
 }
-#endif
 
 struct RouteShape: Shape {
     let points: [CLLocationCoordinate2D]
