@@ -9,6 +9,7 @@ struct PrivacyInformationView: View {
                 Section("プライバシー") {
                     Text("このアプリは、通知設定と終了したランの日時・経過時間・補給記録をこの端末内に保存します。履歴はアプリ内で削除できます。")
                     Text("ルートアートを利用する場合、許可されたヘルスケアのランと経路を読み取ります。完成した作品は操作した場合のみ端末内に保存し、写真への保存や共有も任意です。経路の形などから場所が推測されることがあります。アプリがデータを外部サーバーへ送信・販売することはありません。")
+                    Link("プライバシーポリシーを開く", destination: URL(string: "https://mytysoldier.github.io/app-privacy/privacy/race-fuel-timer/")!)
                 }
 
                 Section("権限") {
