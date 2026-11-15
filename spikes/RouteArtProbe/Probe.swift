@@ -675,7 +675,7 @@ struct ProbeSavedArtworks: View {
     @State private var attributesMessage = ""
     var body: some View {
         ScrollView {
-            VStack {
+            LazyVStack {
                 Text(message)
 #if targetEnvironment(simulator)
                 Button("検証用の破損画像を追加") { addCorruptFixture() }.buttonStyle(.bordered)
@@ -684,8 +684,18 @@ struct ProbeSavedArtworks: View {
 #endif
                 ForEach(images, id: \.self) { url in
                     VStack {
-                        if let image = UIImage(contentsOfFile: url.path) {
-                            Image(uiImage: image).resizable().scaledToFit()
+                        if let thumbnail = ProbeArtworkLibrary.thumbnail(at: url) {
+                            NavigationLink {
+                                ScrollView {
+                                    if let image = UIImage(contentsOfFile: url.path) {
+                                        Image(uiImage: image).resizable().scaledToFit()
+                                    } else {
+                                        Text("保存画像を読み込めません")
+                                    }
+                                }.navigationTitle("検証用の作品")
+                            } label: {
+                                Image(decorative: thumbnail, scale: 1).resizable().scaledToFit()
+                            }.accessibilityLabel("保存作品を開く")
                         } else {
                             Text("保存画像を読み込めません: \(url.lastPathComponent)")
                         }
@@ -745,9 +755,7 @@ struct ProbeSavedArtworks: View {
     private func load() {
         do {
             let directory = try Self.directory()
-            guard FileManager.default.fileExists(atPath: directory.path) else { images = []; message = "保存作品はありません"; return }
-            images = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-                .filter { $0.pathExtension.lowercased() == "png" }.sorted { $0.lastPathComponent < $1.lastPathComponent }
+            images = try ProbeArtworkLibrary.images(in: directory)
             message = images.isEmpty ? "保存作品はありません" : "保存作品: \(images.count) 件"
         } catch {
             images = []; message = "保存作品を読み込めませんでした"
