@@ -32,6 +32,13 @@ struct RouteArtView: View {
     @State private var requestID = UUID()
     @State private var routeObserver: HKAnchoredObjectQuery?
     @State private var observerID = UUID()
+    private var sceneryAssetName: String {
+        switch background {
+        case "海辺": return "RouteSceneryCoast"
+        case "森": return "RouteSceneryForest"
+        default: return "RouteScenerySunset"
+        }
+    }
     private var routeColor: Color {
         switch lineColor { case "オレンジ": return .orange; case "水色": return .cyan; default: return .white }
     }
@@ -65,7 +72,7 @@ struct RouteArtView: View {
                         let index = backgrounds.firstIndex(of: background) ?? 0
                         background = backgrounds[(index + 1) % backgrounds.count]
                     }.buttonStyle(.borderedProminent)
-                    Text("背景は変更できます").font(.caption).foregroundStyle(.secondary)
+                    Text("背景は同梱の風景写真です。変更できます").font(.caption).foregroundStyle(.secondary)
                     Toggle("風景を大きく見せる", isOn: $sceneryFocused)
                     Picker("線の色", selection: $lineColor) {
                         Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
@@ -192,7 +199,12 @@ struct RouteArtView: View {
     private var artwork: some View {
         GeometryReader { geometry in
                         ZStack {
-                            SceneryBackground(name: background)
+                            if let image = UIImage(named: sceneryAssetName) {
+                                Image(uiImage: image).resizable().scaledToFill()
+                                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                            } else {
+                                SceneryBackground(name: background)
+                            }
                             LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
                                 ZStack {
