@@ -66,7 +66,7 @@ struct RouteArtView: View {
                     Text("ヘルスケアに保存されたランとルートから作品を作ります。保存と共有は任意です。")
                         .font(.footnote).foregroundStyle(.secondary)
                     Button("ヘルスケアのランを読み込む") { read() }.buttonStyle(.borderedProminent)
-                    NavigationLink("保存した作品を見る", isActive: $showingSavedArtworks) { ProbeSavedArtworks() }
+                    Button("保存した作品を見る") { showingSavedArtworks = true }
                     artwork.aspectRatio(4.0 / 5.0, contentMode: .fit)
                     Text(status).font(.footnote)
                     Button("背景を変更") {
@@ -131,6 +131,7 @@ struct RouteArtView: View {
                     Text("ヘルスケアのランとルートを読み取り、作品を作ります。保存と共有は任意です。") .font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }.navigationTitle("ルートアート")
+                .navigationDestination(isPresented: $showingSavedArtworks) { ProbeSavedArtworks() }
                 .sheet(item: $shareImage) { item in
                     ShareSheet(image: item.image) { completed in
                         DispatchQueue.main.async {
