@@ -2,6 +2,14 @@ import Foundation
 import ImageIO
 
 enum ProbeArtworkLibrary {
+    static func prepareDirectory(_ directory: URL) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var directory = directory
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try directory.setResourceValues(values)
+    }
+
     static func images(in directory: URL) throws -> [URL] {
         guard FileManager.default.fileExists(atPath: directory.path) else { return [] }
         let urls = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])

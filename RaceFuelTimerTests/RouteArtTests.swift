@@ -35,6 +35,22 @@ import UIKit
     #expect(FileManager.default.fileExists(atPath: image.path))
 }
 
+@Test func 作品フォルダの準備は既存画像を残してバックアップ対象外にする() throws {
+    // Arrange
+    let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let image = directory.appendingPathComponent("existing.png")
+    try Data("fixture".utf8).write(to: image)
+
+    // Act
+    try ProbeArtworkLibrary.prepareDirectory(directory)
+
+    // Assert
+    #expect(try directory.resourceValues(forKeys: [.isExcludedFromBackupKey]).isExcludedFromBackup == true)
+    #expect(try Data(contentsOf: image) == Data("fixture".utf8))
+}
+
 private func 位置(_ longitude: Double, 秒: TimeInterval, 精度: Double = 5) -> CLLocation {
     CLLocation(coordinate: CLLocationCoordinate2D(latitude: 0, longitude: longitude),
                altitude: 0, horizontalAccuracy: 精度, verticalAccuracy: 5,
