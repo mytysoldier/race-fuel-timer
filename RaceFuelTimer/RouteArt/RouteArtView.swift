@@ -25,7 +25,6 @@ struct RouteArtView: View {
     @State private var lineStyle = "実線"
     @State private var sceneryFocused = true
     @State private var hideEndpoints = true
-    @State private var shareImage: ExportImage?
     @State private var exportMessage = ""
     @State private var exportRequestID = UUID()
     @State private var hasRequestedRoute = false
@@ -63,7 +62,7 @@ struct RouteArtView: View {
     var body: some View {
             ScrollView {
                 VStack(spacing: 16) {
-                    Text("ヘルスケアに保存されたランとルートから作品を作ります。保存と共有は任意です。")
+                    Text("ヘルスケアに保存されたランとルートから作品を作ります。保存は任意です。")
                         .font(.footnote).foregroundStyle(.secondary)
                     Button("ヘルスケアのランを読み込む") { read() }.buttonStyle(.borderedProminent)
                     Button("保存した作品を見る") { showingSavedArtworks = true }
@@ -86,16 +85,13 @@ struct RouteArtView: View {
                         Text(hideEndpoints ? "表示できるルートが残りません。設定を変更してください。" : "表示できるルートがありません。別のランをお試しください。")
                             .font(.caption).foregroundStyle(.secondary)
                     }
-                    Text("一部を隠しても、ルートの形などから場所が推測される可能性があります。保存・共有前に画像をご確認ください。")
+                    Text("一部を隠しても、ルートの形などから場所が推測される可能性があります。保存前に画像をご確認ください。")
                         .font(.caption).foregroundStyle(.secondary)
                     Button("作品をアプリ内に保存") { saveProbeArtwork() }
                         .buttonStyle(.borderedProminent).disabled(!hasVisibleLine || isSelectingWorkout)
                     if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
-                    HStack {
-                        Button("写真に保存") { saveImage() }.buttonStyle(.bordered)
-                        Button("共有") { prepareShare() }.buttonStyle(.bordered)
-                    }
-                    .disabled(!hasVisibleLine || isSelectingWorkout)
+                    Button("写真に保存") { saveImage() }.buttonStyle(.bordered)
+                        .disabled(!hasVisibleLine || isSelectingWorkout)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     if !workouts.isEmpty {
                         DisclosureGroup("直近のランから選ぶ（最大30件）") {
@@ -128,18 +124,10 @@ struct RouteArtView: View {
                         Text("ルートの更新を確認できません。読み込み直して再試行してください。")
                             .font(.caption)
                     }
-                    Text("ヘルスケアのランとルートを読み取り、作品を作ります。保存と共有は任意です。") .font(.caption).foregroundStyle(.secondary)
+                    Text("ヘルスケアのランとルートを読み取り、作品を作ります。保存は任意です。") .font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }.navigationTitle("ルートアート")
                 .navigationDestination(isPresented: $showingSavedArtworks) { ProbeSavedArtworks() }
-                .sheet(item: $shareImage) { item in
-                    ShareSheet(image: item.image) { completed in
-                        DispatchQueue.main.async {
-                            guard exportRequestID == item.id else { return }
-                            exportMessage = completed ? "共有先での処理が完了しました" : "共有は完了していません"
-                        }
-                    }
-                }
         .onDisappear {
             // 一覧への遷移でも発火するため、編集中のルートを保持する。
             guard !showingSavedArtworks else { return }
@@ -266,14 +254,6 @@ struct RouteArtView: View {
                 }
             }
         }
-    }
-
-    @MainActor private func prepareShare() {
-        clearExportFeedback()
-        guard let image = renderImage() else { exportMessage = "画像を作成できませんでした"; return }
-        let item = ExportImage(image: image)
-        exportRequestID = item.id
-        shareImage = item
     }
 
     private func clearExportFeedback() {
@@ -561,22 +541,6 @@ private struct ExportSettings: Equatable {
     let hideEndpoints: Bool
     let hideSegmentEnds: Bool
     let sceneryFocused: Bool
-}
-
-struct ExportImage: Identifiable {
-    let id = UUID()
-    let image: UIImage
-}
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let image: UIImage
-    let onComplete: (Bool) -> Void
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let controller = UIActivityViewController(activityItems: [image], applicationActivities: nil)
-        controller.completionWithItemsHandler = { _, completed, _, _ in onComplete(completed) }
-        return controller
-    }
-    func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
 }
 
 // アプリ内で描画する風景。外部素材や通信を使わない。
