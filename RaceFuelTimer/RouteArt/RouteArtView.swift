@@ -88,8 +88,11 @@ struct RouteArtView: View {
                     }
                     Text("一部を隠しても、ルートの形などから場所が推測される可能性があります。保存・共有前に画像をご確認ください。")
                         .font(.caption).foregroundStyle(.secondary)
+                    Button("作品をアプリ内に保存") { saveProbeArtwork() }
+                        .buttonStyle(.borderedProminent).disabled(!hasVisibleLine || isSelectingWorkout)
+                    if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
                     HStack {
-                        Button("写真に保存") { saveImage() }.buttonStyle(.borderedProminent)
+                        Button("写真に保存") { saveImage() }.buttonStyle(.bordered)
                         Button("共有") { prepareShare() }.buttonStyle(.bordered)
                     }
                     .disabled(!hasVisibleLine || isSelectingWorkout)
@@ -125,9 +128,6 @@ struct RouteArtView: View {
                         Text("ルートの更新を確認できません。読み込み直して再試行してください。")
                             .font(.caption)
                     }
-                    Button("作品をアプリ内に保存") { saveProbeArtwork() }
-                        .buttonStyle(.bordered).disabled(!hasVisibleLine || isSelectingWorkout)
-                    if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
                     Text("ヘルスケアのランとルートを読み取り、作品を作ります。保存と共有は任意です。") .font(.caption).foregroundStyle(.secondary)
                 }.padding()
             }.navigationTitle("ルートアート")
@@ -450,7 +450,7 @@ struct RouteArtView: View {
         guard let data = renderImage()?.pngData() else { storageMessage = "画像を作成できませんでした"; return }
         do {
             let directory = try ProbeSavedArtworks.directory()
-            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try ProbeArtworkLibrary.prepareDirectory(directory)
             try data.write(to: directory.appendingPathComponent("\(UUID().uuidString).png"), options: .atomic)
             storageMessage = "作品を保存しました"
         } catch {
@@ -511,8 +511,10 @@ struct ProbeSavedArtworks: View {
     private func load() {
         do {
             let directory = try Self.directory()
+            let backupProtected = (try? ProbeArtworkLibrary.prepareDirectory(directory)) != nil
             images = try ProbeArtworkLibrary.images(in: directory)
             message = images.isEmpty ? "保存作品はありません" : "保存作品: \(images.count) 件"
+            if !backupProtected { message += "。バックアップ設定を確認できません" }
         } catch {
             images = []; message = "保存作品を読み込めませんでした"
         }
