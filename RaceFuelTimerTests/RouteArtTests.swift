@@ -1,8 +1,69 @@
 import CoreLocation
 import Foundation
+import ImageIO
 import Testing
 import UIKit
 @testable import RaceFuelTimer
+
+@Test func 選択写真は位置情報を引き継がず画像として読み込める() throws {
+    // Arrange
+    let image = UIGraphicsImageRenderer(size: CGSize(width: 40, height: 30)).image { context in
+        UIColor.red.setFill()
+        context.fill(CGRect(x: 0, y: 0, width: 40, height: 30))
+    }
+    let source = try #require(image.cgImage)
+    let data = NSMutableData()
+    let destination = try #require(CGImageDestinationCreateWithData(data, "public.jpeg" as CFString, 1, nil))
+    CGImageDestinationAddImage(destination, source, [kCGImagePropertyGPSDictionary: [
+        kCGImagePropertyGPSLatitude: 35.0,
+        kCGImagePropertyGPSLatitudeRef: "N",
+        kCGImagePropertyGPSLongitude: 139.0,
+        kCGImagePropertyGPSLongitudeRef: "E"
+    ]] as CFDictionary)
+    #expect(CGImageDestinationFinalize(destination))
+    let input = try #require(CGImageSourceCreateWithData(data as CFData, nil))
+    let inputProperties = try #require(CGImageSourceCopyPropertiesAtIndex(input, 0, nil) as? [CFString: Any])
+    #expect(inputProperties[kCGImagePropertyGPSDictionary] != nil)
+
+    // Act
+    let result = try #require(RouteArtView.backgroundImage(from: data as Data))
+    let png = try #require(result.pngData())
+    let output = try #require(CGImageSourceCreateWithData(png as CFData, nil))
+    let properties = try #require(CGImageSourceCopyPropertiesAtIndex(output, 0, nil) as? [CFString: Any])
+
+    // Assert
+    #expect(properties[kCGImagePropertyGPSDictionary] == nil)
+    #expect(result.size.width > 0)
+}
+
+@Test func 壊れた写真は読み込みに失敗する() {
+    // Arrange
+    let data = Data("invalid".utf8)
+
+    // Act
+    let result = RouteArtView.backgroundImage(from: data)
+
+    // Assert
+    #expect(result == nil)
+}
+
+@Test func 大きな写真は描画用に縮小して読み込む() throws {
+    // Arrange
+    let format = UIGraphicsImageRendererFormat()
+    format.scale = 1
+    let image = UIGraphicsImageRenderer(size: CGSize(width: 3000, height: 100), format: format).image { context in
+        UIColor.blue.setFill()
+        context.fill(CGRect(x: 0, y: 0, width: 3000, height: 100))
+    }
+    let data = try #require(image.pngData())
+
+    // Act
+    let result = try #require(RouteArtView.backgroundImage(from: data))
+
+    // Assert
+    #expect(result.size.width <= 2400)
+    #expect(result.size.height > 0)
+}
 
 @Test func 開始地点を横切る線は保護後に結ばれない() {
     // Arrange

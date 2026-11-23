@@ -2,13 +2,21 @@ import SwiftUI
 import HealthKit
 import CoreLocation
 import Photos
+import PhotosUI
 import UIKit
+import ImageIO
 
 
 struct RouteArtView: View {
     @Environment(\.scenePhase) private var scenePhase
-    private let backgrounds = ["海辺", "森", "夕暮れ"]
-    @State private var background = ["海辺", "森", "夕暮れ"].randomElement() ?? "海辺"
+    private let backgrounds = ["山", "森", "夕暮れ"]
+    @State private var background = ["山", "森", "夕暮れ"].randomElement() ?? "山"
+    @State private var selectedPhoto: PhotosPickerItem?
+    @State private var customBackground: UIImage?
+    @State private var photoRequestID = UUID()
+    @State private var backgroundRevision = UUID()
+    @State private var photoMessage = ""
+    @State private var isLoadingPhoto = false
     @State private var points: [CLLocationCoordinate2D] = []
     @State private var breakIndices: Set<Int> = []
     @State private var status = "ヘルスケアのランを読み込んで作品を作れます"
@@ -21,7 +29,7 @@ struct RouteArtView: View {
     @State private var routeUpdateAvailable = false
     @State private var routeObserverFailed = false
     @State private var storageMessage = ""
-    @State private var lineColor = "白"
+    @State private var lineColor = "オレンジ"
     @State private var lineStyle = "実線"
     @State private var sceneryFocused = true
     @State private var hideEndpoints = true
@@ -33,8 +41,11 @@ struct RouteArtView: View {
     @State private var routeObserver: HKAnchoredObjectQuery?
     @State private var observerID = UUID()
     private var sceneryAssetName: String {
+        assetName(for: background)
+    }
+    private func assetName(for background: String) -> String {
         switch background {
-        case "海辺": return "RouteSceneryCoast"
+        case "山": return "RouteSceneryCoast"
         case "森": return "RouteSceneryForest"
         default: return "RouteScenerySunset"
         }
@@ -54,7 +65,7 @@ struct RouteArtView: View {
     }
     private var exportSettings: ExportSettings {
         let segmentEnds = false
-        return ExportSettings(background: background, color: lineColor, style: lineStyle,
+        return ExportSettings(background: background, backgroundRevision: backgroundRevision, color: lineColor, style: lineStyle,
                               hideEndpoints: hideEndpoints, hideSegmentEnds: segmentEnds,
                               sceneryFocused: sceneryFocused)
     }
@@ -68,12 +79,38 @@ struct RouteArtView: View {
                     Button("保存した作品を見る") { showingSavedArtworks = true }
                     artwork.aspectRatio(4.0 / 5.0, contentMode: .fit)
                     Text(status).font(.footnote)
-                    Button("背景を変更") {
-                        let index = backgrounds.firstIndex(of: background) ?? 0
-                        background = backgrounds[(index + 1) % backgrounds.count]
-                    }.buttonStyle(.borderedProminent)
-                    Text("背景は同梱の風景写真です。変更できます").font(.caption).foregroundStyle(.secondary)
-                    Toggle("風景を大きく見せる", isOn: $sceneryFocused)
+                    Text("背景を選ぶ").font(.headline)
+                    HStack(spacing: 8) {
+                        ForEach(backgrounds, id: \.self) { name in
+                            Button {
+                                photoRequestID = UUID()
+                                isLoadingPhoto = false
+                                selectedPhoto = nil
+                                customBackground = nil
+                                background = name
+                                backgroundRevision = UUID()
+                                photoMessage = ""
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Image(uiImage: UIImage(named: assetName(for: name)) ?? UIImage())
+                                        .resizable().scaledToFill().frame(height: 64).clipped()
+                                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    Text(name).font(.caption)
+                                    if customBackground == nil && background == name {
+                                        Image(systemName: "checkmark.circle.fill").accessibilityLabel("選択中")
+                                    }
+                                }.frame(maxWidth: .infinity)
+                            }.buttonStyle(.plain).accessibilityLabel("\(name)の背景")
+                        }
+                    }
+                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                        Label("自分の写真を選ぶ", systemImage: "photo")
+                    }.buttonStyle(.bordered)
+                    if isLoadingPhoto { ProgressView("写真を読み込み中") }
+                    if !photoMessage.isEmpty { Text(photoMessage).font(.caption).foregroundStyle(.secondary) }
+                    Text("地図風の模様は架空のデザインです。実際の道路や景色を表すものではありません。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Toggle("背景を広く見せる", isOn: $sceneryFocused)
                     Picker("線の色", selection: $lineColor) {
                         Text("白").tag("白"); Text("オレンジ").tag("オレンジ"); Text("水色").tag("水色")
                     }.pickerStyle(.segmented)
@@ -88,10 +125,10 @@ struct RouteArtView: View {
                     Text("一部を隠しても、ルートの形などから場所が推測される可能性があります。保存前に画像をご確認ください。")
                         .font(.caption).foregroundStyle(.secondary)
                     Button("作品をアプリ内に保存") { saveProbeArtwork() }
-                        .buttonStyle(.borderedProminent).disabled(!hasVisibleLine || isSelectingWorkout)
+                        .buttonStyle(.borderedProminent).disabled(!hasVisibleLine || isSelectingWorkout || isLoadingPhoto)
                     if !storageMessage.isEmpty { Text(storageMessage).font(.caption) }
                     Button("写真に保存") { saveImage() }.buttonStyle(.bordered)
-                        .disabled(!hasVisibleLine || isSelectingWorkout)
+                        .disabled(!hasVisibleLine || isSelectingWorkout || isLoadingPhoto)
                     if !exportMessage.isEmpty { Text(exportMessage).font(.caption) }
                     if !workouts.isEmpty {
                         DisclosureGroup("直近のランから選ぶ（最大30件）") {
@@ -131,6 +168,8 @@ struct RouteArtView: View {
         .onDisappear {
             // 一覧への遷移でも発火するため、編集中のルートを保持する。
             guard !showingSavedArtworks else { return }
+            photoRequestID = UUID()
+            isLoadingPhoto = false
             requestID = UUID()
             stopRouteObserver()
             points = []; breakIndices = []; selectedWorkout = nil; workouts = []
@@ -143,6 +182,35 @@ struct RouteArtView: View {
         .onChange(of: exportSettings) { _, _ in
             clearExportFeedback()
             storageMessage = ""
+        }
+        .onChange(of: selectedPhoto) { _, item in
+            guard let item else { return }
+            let request = UUID()
+            photoRequestID = request
+            isLoadingPhoto = true
+            photoMessage = ""
+            Task { @MainActor in
+                do {
+                    let data = try await item.loadTransferable(type: Data.self)
+                    guard request == photoRequestID else { return }
+                    guard let data, let image = Self.backgroundImage(from: data) else {
+                        isLoadingPhoto = false
+                        photoMessage = "写真を読み込めませんでした。別の写真をお試しください。"
+                        selectedPhoto = nil
+                        return
+                    }
+                    customBackground = image
+                    backgroundRevision = UUID()
+                    isLoadingPhoto = false
+                    photoMessage = "選んだ写真を背景にしています"
+                    selectedPhoto = nil
+                } catch {
+                    guard request == photoRequestID else { return }
+                    isLoadingPhoto = false
+                    photoMessage = "写真を読み込めませんでした。もう一度お試しください。"
+                    selectedPhoto = nil
+                }
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .background && hasRequestedRoute {
@@ -160,6 +228,15 @@ struct RouteArtView: View {
                 read()
             }
         }
+    }
+    static func backgroundImage(from data: Data) -> UIImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: 2400
+              ] as CFDictionary) else { return nil }
+        return UIImage(cgImage: image)
     }
     private func workoutRow(_ workout: HKWorkout) -> some View {
         ViewThatFits(in: .horizontal) {
@@ -191,36 +268,49 @@ struct RouteArtView: View {
     private var artwork: some View {
         GeometryReader { geometry in
                         ZStack {
-                            if let image = UIImage(named: sceneryAssetName) {
+                            if let image = customBackground ?? UIImage(named: sceneryAssetName) {
                                 Image(uiImage: image).resizable().scaledToFill()
                                     .frame(width: geometry.size.width, height: geometry.size.height).clipped()
                             } else {
                                 SceneryBackground(name: background)
                             }
-                            LinearGradient(colors: [.black.opacity(0.12), .black.opacity(0.2), .black.opacity(0.78)], startPoint: .top, endPoint: .bottom)
+                            LinearGradient(colors: [.black.opacity(0.56), .clear, .black.opacity(0.34)], startPoint: .top, endPoint: .bottom)
                             VStack(spacing: 0) {
-                                ZStack {
-                                    let shape = RouteShape(points: artworkRoute.points, smoothSample: false, breakIndices: artworkRoute.breaks)
-                                    let width: CGFloat = lineStyle == "太線" ? 6 : 3
-                                    let dash: [CGFloat] = lineStyle == "点線" ? [3, 8] : []
-                                    shape.stroke(.black.opacity(0.8), style: StrokeStyle(lineWidth: width + 3, lineCap: .round, lineJoin: .round, dash: dash))
-                                    shape.stroke(routeColor, style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: dash))
-                                        .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.9) : .black.opacity(0.65), radius: lineStyle == "光る線" ? 7 : 3)
-                                }
-                                    .frame(width: sceneryFocused ? geometry.size.width * 0.38 : nil,
-                                           height: sceneryFocused ? geometry.size.height * 0.25 : nil)
-                                    .padding(.horizontal, 25).padding(.vertical, 30)
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: sceneryFocused ? .bottomTrailing : .center)
-                                VStack(spacing: 7) {
-                                    Text("YOUR RUN").font(.system(size: 11, weight: .semibold)).tracking(3)
-                                    if let workout = selectedWorkout, let distance = workout.totalDistance?.doubleValue(for: .meter()), distance > 0 {
-                                        Text(String(format: "%.2f km", distance / 1000)).font(.system(size: 38, weight: .medium, design: .serif))
-                                    } else { Text("走った軌跡").font(.system(size: 28, weight: .medium, design: .serif)) }
+                                VStack(spacing: 5) {
+                                    Text("MY RUN").font(.system(size: 10, weight: .semibold)).tracking(3)
                                     if let workout = selectedWorkout {
-                                        Text(workout.endDate, format: .dateTime.year().month().day()).font(.caption)
-                                        Text("時間 \(Int(workout.duration / 60))分").font(.caption)
+                                        Text(workout.endDate, format: .dateTime.year().month().day())
+                                            .font(.system(size: 24, weight: .medium, design: .serif))
+                                        HStack(spacing: 12) {
+                                            if let distance = workout.totalDistance?.doubleValue(for: .meter()), distance > 0 {
+                                                Text(String(format: "%.2f KM", distance / 1000))
+                                            }
+                                            Text("\(Int(workout.duration / 60))分")
+                                        }.font(.system(size: 11, weight: .semibold)).tracking(1)
+                                    } else {
+                                        Text("走った日の記録").font(.system(size: 23, weight: .medium, design: .serif))
                                     }
-                                }.foregroundStyle(.white).padding(.bottom, 24)
+                                }
+                                .foregroundStyle(.white).shadow(color: .black.opacity(0.6), radius: 4)
+                                .padding(.top, geometry.size.height * 0.07)
+                                Spacer(minLength: 0)
+                                ZStack {
+                                    Image("FictionalMap").resizable().scaledToFit()
+                                    let shape = RouteShape(points: artworkRoute.points, smoothSample: false, breakIndices: artworkRoute.breaks)
+                                    let width: CGFloat = lineStyle == "太線" ? 7 : 4
+                                    let dash: [CGFloat] = lineStyle == "点線" ? [3, 8] : []
+                                    shape.stroke(lineColor == "白" ? .black.opacity(0.75) : .white.opacity(0.95), style: StrokeStyle(lineWidth: width + 3, lineCap: .round, lineJoin: .round, dash: dash))
+                                        .padding(geometry.size.width * 0.08)
+                                    shape.stroke(routeColor, style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round, dash: dash))
+                                        .shadow(color: lineStyle == "光る線" ? routeColor.opacity(0.8) : .black.opacity(0.25), radius: lineStyle == "光る線" ? 6 : 1)
+                                        .padding(geometry.size.width * 0.08)
+                                }
+                                .frame(width: min(geometry.size.width * (sceneryFocused ? 0.94 : 0.98), geometry.size.height * (sceneryFocused ? 0.64 : 0.69)),
+                                       height: min(geometry.size.width * (sceneryFocused ? 0.94 : 0.98), geometry.size.height * (sceneryFocused ? 0.64 : 0.69)))
+                                Spacer(minLength: 0)
+                                Text("架空の地図風デザイン").font(.system(size: 9, weight: .medium))
+                                    .foregroundStyle(.white).shadow(color: .black, radius: 3)
+                                    .padding(.bottom, 12)
                             }
                         }.frame(width: geometry.size.width, height: geometry.size.height).clipped().clipShape(RoundedRectangle(cornerRadius: 16))
         }
@@ -536,6 +626,7 @@ struct RouteShape: Shape {
 
 private struct ExportSettings: Equatable {
     let background: String
+    let backgroundRevision: UUID
     let color: String
     let style: String
     let hideEndpoints: Bool
@@ -548,7 +639,7 @@ private struct SceneryBackground: View {
     let name: String
     var colors: [Color] {
         switch name {
-        case "海辺": return [Color(red: 0.25, green: 0.55, blue: 0.70), Color(red: 0.72, green: 0.81, blue: 0.76), Color(red: 0.12, green: 0.35, blue: 0.43)]
+        case "山": return [Color(red: 0.25, green: 0.55, blue: 0.70), Color(red: 0.72, green: 0.81, blue: 0.76), Color(red: 0.12, green: 0.35, blue: 0.43)]
         case "森": return [Color(red: 0.60, green: 0.74, blue: 0.69), Color(red: 0.28, green: 0.49, blue: 0.40), Color(red: 0.07, green: 0.20, blue: 0.16)]
         default: return [Color(red: 0.73, green: 0.42, blue: 0.36), Color(red: 0.91, green: 0.66, blue: 0.43), Color(red: 0.23, green: 0.25, blue: 0.32)]
         }
