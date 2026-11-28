@@ -153,7 +153,7 @@ func 通知メッセージを通知本文に使う() throws {
     let reminder = try plan.schedule().get()[0]
 
     // Assert
-    #expect(reminder.notificationTitle == "ランニング補給タイマー")
+    #expect(reminder.notificationTitle == "ランの足あと")
     #expect(reminder.notificationBody == "ジェルをとろう")
 }
 

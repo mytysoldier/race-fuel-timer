@@ -116,7 +116,7 @@ struct ContentView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("ランニング補給タイマー").font(.largeTitle.bold())
+                    Text("補給タイマー").font(.largeTitle.bold())
                     Text("補給ペースと、通知を止める予定を選んで始めよう。").foregroundStyle(.secondary)
                 }
 
@@ -146,12 +146,6 @@ struct ContentView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
-
-                NavigationLink("ルートアート") { RouteArtView() }
-                    .buttonStyle(.bordered)
-
-                NavigationLink("ランの履歴") { SessionHistoryView() }
-                    .buttonStyle(.bordered)
 
                 if didRecoverSavedPlan {
                     Label("保存した設定を新しい初期値へ戻しました。", systemImage: "exclamationmark.triangle.fill")
@@ -347,11 +341,11 @@ private struct NotificationSettingsEditor: View {
             }
             Section("通知プレビュー") {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("ランニング補給タイマー").font(.subheadline.weight(.semibold))
+                    Text("ランの足あと").font(.subheadline.weight(.semibold))
                     Text(notificationMessage(draft.editablePlan))
                 }
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("通知プレビュー。ランニング補給タイマー。\(notificationMessage(draft.editablePlan))")
+                .accessibilityLabel("通知プレビュー。ランの足あと。\(notificationMessage(draft.editablePlan))")
             }
             Section {
                 Toggle("画面外でも補給を知らせる", isOn: Binding(get: { draft.shouldUseNotifications }, set: {
@@ -391,7 +385,7 @@ private struct NotificationSettingsEditor: View {
 }
 
 
-private struct SessionHistoryView: View {
+struct SessionHistoryView: View {
     private let store = SessionHistoryStore()
     @State private var entries: [SessionHistoryEntry] = []
     @State private var errorMessage: String?

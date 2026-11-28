@@ -11,7 +11,7 @@
     <key>NSSupportsLiveActivities</key>
     <true/>
     <key>CFBundleDisplayName</key>
-    <string>ランニング補給タイマー</string>
+    <string>ランの足あと</string>
     <key>CFBundleLocalizations</key>
     <array>
         <string>ja</string>
