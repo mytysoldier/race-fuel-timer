@@ -58,22 +58,25 @@ struct RaceFuelTimerApp: App {
                         saveHistory()
                     }
                 } else {
-                    ContentView { plan, shouldRequestNotificationPermission in
-                        guard let newSession = try? Session(plan: plan) else { return }
-                        session = newSession
-                        notificationsAreEnabledForCurrentSession = shouldRequestNotificationPermission
+                    HomeView {
+                        ContentView { plan, shouldRequestNotificationPermission in
+                            guard let newSession = try? Session(plan: plan) else { return }
+                            session = newSession
+                            notificationsAreEnabledForCurrentSession = shouldRequestNotificationPermission
 
-                        let operationID = notificationScheduler.beginNotificationOperation()
-                        guard shouldRequestNotificationPermission else { return }
-                        Task {
-                            await notificationScheduler.requestAuthorizationAndSchedule(
-                                for: newSession,
-                                operationID: operationID
-                            )
+                            let operationID = notificationScheduler.beginNotificationOperation()
+                            guard shouldRequestNotificationPermission else { return }
+                            Task {
+                                await notificationScheduler.requestAuthorizationAndSchedule(
+                                    for: newSession,
+                                    operationID: operationID
+                                )
+                            }
                         }
                     }
                 }
             }
+            .id(session != nil)
             .onChange(of: session) { _, updated in
                 liveActivity.synchronize(session: updated)
             }
@@ -91,5 +94,49 @@ struct RaceFuelTimerApp: App {
                 liveActivity.synchronize(session: session, force: phase == .active)
             }
         }
+    }
+}
+
+private struct HomeView<TimerContent: View>: View {
+    @ViewBuilder let timerContent: () -> TimerContent
+    @State private var showingSafety = false
+    @State private var showingPrivacy = false
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("ランの足あと").font(.largeTitle.bold())
+                    Text("走った思い出を、あなただけの作品に。")
+                        .foregroundStyle(.secondary)
+                }
+                GroupBox("ルートアート") {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("ヘルスケアのルート付きランから作品を作れます。")
+                            .font(.subheadline)
+                        NavigationLink("ルートアートを作る") { RouteArtView() }
+                            .buttonStyle(.borderedProminent)
+                        NavigationLink("保存した作品を見る") { ProbeSavedArtworks() }
+                            .buttonStyle(.bordered)
+                    }.frame(maxWidth: .infinity, alignment: .leading)
+                }
+                NavigationLink("補給タイマーを使う", destination: timerContent)
+                    .buttonStyle(.bordered)
+                NavigationLink("ランの履歴") { SessionHistoryView() }
+                    .buttonStyle(.bordered)
+            }.frame(maxWidth: .infinity, alignment: .leading).padding()
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu("情報", systemImage: "info.circle") {
+                    Button("安全上の注意") { showingSafety = true }
+                    Button("プライバシーとサポート") { showingPrivacy = true }
+                }
+            }
+        }
+        .sheet(isPresented: $showingSafety) {
+            SafetyInformationView(isOnboarding: false, onCompleteOnboarding: {})
+        }
+        .sheet(isPresented: $showingPrivacy) { PrivacyInformationView() }
     }
 }

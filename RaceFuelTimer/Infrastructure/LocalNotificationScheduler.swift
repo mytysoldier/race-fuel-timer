@@ -210,7 +210,7 @@ final class ForegroundNotificationDelegate: NSObject, UNUserNotificationCenterDe
 
 extension ScheduledReminder {
     var notificationTitle: String {
-        "ランニング補給タイマー"
+        "ランの足あと"
     }
 
     var notificationBody: String {

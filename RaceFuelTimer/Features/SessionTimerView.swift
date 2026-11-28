@@ -155,7 +155,7 @@ struct SessionTimerView: View {
         switch notificationAuthorization {
         case .denied:
             GroupBox("通知がオフです") {
-                Text("タイマーと画面上の次回予定は使えます。通知を受け取るには、iPhoneの「設定」>「通知」>「ランニング補給タイマー」で許可してから、次回のセッションを開始してください。")
+                Text("タイマーと画面上の次回予定は使えます。通知を受け取るには、iPhoneの「設定」>「通知」>「ランの足あと」で許可してから、次回のセッションを開始してください。")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -237,7 +237,7 @@ struct SessionSummaryView: View {
                     Text("このランを端末内の履歴に保存しました。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
-                Button(historySaveFailed ? "保存せず設定画面へ戻る" : "設定画面へ戻る", action: onDone)
+                Button(historySaveFailed ? "保存せずホームへ戻る" : "ホームへ戻る", action: onDone)
                     .buttonStyle(.borderedProminent).controlSize(.large)
             }
             .padding()
